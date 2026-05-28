@@ -1,0 +1,23 @@
+.DS_Store
+*.log
+*.iml
+
+.idea/
+.vscode/
+
+node_modules/
+dist/
+target/
+build/
+
+frontend/node_modules/
+frontend/dist/
+backend/target/
+
+outputs/
+
+# Local secrets. Use backend/src/main/resources/application.example.yml as a template.
+backend/src/main/resources/application.yml
+
+# Database dumps can contain real users, phone numbers, emails, and passwords.
+*.sql
