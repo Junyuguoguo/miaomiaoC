@@ -1,0 +1,49 @@
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: miaomiaoc
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - ../database/miaomiaoc.sql:/docker-entrypoint-initdb.d/01-miaomiaoc.sql:ro
+      - ../database/vip_key_migration.sql:/docker-entrypoint-initdb.d/02-vip-key.sql:ro
+      - ../database/vip_plan_migration.sql:/docker-entrypoint-initdb.d/03-vip-plan.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p12345678"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  backend:
+    image: eclipse-temurin:21-jre
+    working_dir: /app
+    command: ["java", "-jar", "backend-0.0.1-SNAPSHOT.jar"]
+    volumes:
+      - ../backend:/app:ro
+    environment:
+      SERVER_PORT: 8080
+      DB_URL: jdbc:mysql://mysql:3306/miaomiaoc?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      DB_USERNAME: root
+      DB_PASSWORD: 12345678
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
