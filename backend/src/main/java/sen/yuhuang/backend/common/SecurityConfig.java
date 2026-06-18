@@ -39,7 +39,8 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-                .cors(cors -> cors.configure(http))
+                // 注释掉这行，使用 CorsConfig 中的 CORS 配置
+                // .cors(cors -> cors.configure(http))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // 放行 OPTIONS 预检
@@ -47,6 +48,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers("/api/exam/**").permitAll()
                         .requestMatchers("/api/bank/**").permitAll()
+                        .requestMatchers("/api/vip/**").permitAll()
                         .requestMatchers("/api/admin/**").permitAll()
                         .requestMatchers("/api/teacher/**").permitAll()
                         .anyRequest().authenticated()

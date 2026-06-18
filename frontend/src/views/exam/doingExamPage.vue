@@ -252,7 +252,7 @@ import {
   CircleCheck, CircleClose,
   Document, ArrowDown, ArrowUp  // 添加这两个缺失的图标
 } from '@element-plus/icons-vue'
-import { getExamByExamId, getExamQuestion, submitQuestion,runTestCode,submitExam } from "@/api/exam"
+import { examApi, getExamByExamId, getExamQuestion, submitQuestion,runTestCode,submitExam } from "@/api/exam"
 import { StateEffect } from '@codemirror/state'
 // CodeMirror 导入
 import { EditorState } from '@codemirror/state'
@@ -331,7 +331,7 @@ const fullscreenRetryCount = ref(0)
 const maxRetries = 5
 const isRecovering = ref(false)
 const fullscreenExitCount = ref(0)
-const maxExitWarnings = 5
+const maxExitWarnings = 3
 
 // ==================== CodeMirror 自定义语法检查 +高亮+提示+保存====================
 // 在 ref 声明部分添加
@@ -1515,25 +1515,54 @@ const handleFullscreenChange = () => {
   isFullscreen.value = !!document.fullscreenElement
 
   if (wasFullscreen && !isFullscreen.value) {
-    fullscreenExitCount.value++
-    const remainingWarnings = maxExitWarnings - fullscreenExitCount.value
-
-    if (remainingWarnings > 0) {
-      ElMessage.warning(`警告：您已退出全屏模式 (${fullscreenExitCount.value}/${maxExitWarnings}次)，剩余 ${remainingWarnings} 次机会，超过将自动交卷！`)
+    if (autoSubmitTriggered.value || showSubmitExamConfirm.value === EXAM_SUBMIT_STATUS.SUBMITTED) {
+      return
     }
 
-    if (fullscreenExitCount.value >= maxExitWarnings) {
-      ElMessage.error('您已多次退出全屏，系统将自动交卷！')
+    fullscreenExitCount.value++
+
+    if (fullscreenExitCount.value > maxExitWarnings) {
+      ElMessage.error('您已超过3次退出全屏，系统将自动交卷！')
       setTimeout(() => {
-        handleSubmitExam(true)
+        forceSubmitByFullscreenViolation()
       }, 1000)
       return
     }
+
+    recordFullscreenViolation(fullscreenExitCount.value)
+    const remainingWarnings = maxExitWarnings - fullscreenExitCount.value
+    const warningTail = remainingWarnings > 0
+        ? `剩余 ${remainingWarnings} 次提醒机会，超过3次将自动交卷！`
+        : '再次退出全屏将自动交卷！'
+    ElMessage.warning(`警告：您已退出全屏模式 (${fullscreenExitCount.value}/${maxExitWarnings}次)，${warningTail}`)
 
     setTimeout(() => {
       reenterFullscreen()
     }, 200)
   }
+}
+
+const recordFullscreenViolation = async (count, violationType = '退出全屏/切屏') => {
+  const userId = localStorage.getItem('userId')
+  if (!examId.value || !userId) return
+  try {
+    await examApi.logViolation({
+      examId: String(examId.value),
+      userId: String(userId),
+      violationType,
+      count: String(count)
+    })
+  } catch (error) {
+    console.error('记录违规失败:', error)
+  }
+}
+
+const forceSubmitByFullscreenViolation = async () => {
+  if (autoSubmitTriggered.value || showSubmitExamConfirm.value === EXAM_SUBMIT_STATUS.SUBMITTED) return
+  autoSubmitTriggered.value = true
+  stopFullscreenGuard()
+  await recordFullscreenViolation(fullscreenExitCount.value, '退出全屏/切屏超过3次，强制交卷')
+  await executeAutoSubmit()
 }
 
 const handleKeyDown = (e) => {
@@ -1553,6 +1582,12 @@ const handleKeyDown = (e) => {
     e.stopPropagation()
     ElMessage.warning('考试期间禁止使用TAB键')
     return false
+  }
+}
+
+const handleDocumentClick = () => {
+  if (!document.fullscreenElement && !isRecovering.value && !autoSubmitTriggered.value) {
+    reenterFullscreen()
   }
 }
 
@@ -1599,11 +1634,7 @@ onMounted(async () => {
   document.addEventListener('keydown', handleKeyDown, { capture: true })
   window.addEventListener('keydown', handleKeyDown, { capture: true })
 
-  document.addEventListener('click', () => {
-    if (!document.fullscreenElement && !isRecovering.value) {
-      reenterFullscreen()
-    }
-  })
+  document.addEventListener('click', handleDocumentClick)
 
   // 初始化编辑器
   nextTick(() => {
@@ -1636,6 +1667,7 @@ onUnmounted(() => {
   stopFullscreenGuard()
   document.removeEventListener('fullscreenchange', handleFullscreenChange)
   document.removeEventListener('keydown', handleKeyDown, { capture: true })
+  document.removeEventListener('click', handleDocumentClick)
   window.removeEventListener('keydown', handleKeyDown, { capture: true })
   if (timer) clearInterval(timer)
   if (cmEditor) cmEditor.destroy()

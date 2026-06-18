@@ -95,17 +95,11 @@ public class QuestionBankService {
                 dtoPage = new PageImpl<>(dtoList, pageable, wrongPage.getTotalElements());
 
             } else {
-                // 查询全部题库
+                // 查询全部启用题库。VIP题库也展示给普通用户，点击进入时再做权限拦截。
                 User user = userRepository.findUserByUserId(userId);
                 if (user == null) return Result.error("获取题库，用户不存在！");
 
-                Integer vip = null;
-                LocalDateTime vipExpireTime = user.getVipExpireTime();
-                if (vipExpireTime == null || vipExpireTime.isBefore(LocalDateTime.now())) {
-                    vip = 0; // 非VIP用户只能看普通题库
-                }
-
-                Page<QuestionBank> bankPage = questionBankRepository.findAllBanks(keyword, pageable, vip);
+                Page<QuestionBank> bankPage = questionBankRepository.findAllBanks(keyword, pageable, null);
 
                 // 获取用户收藏的题库ID列表
                 List<Long> collectedBankIds = userCollectBankRepository.findBankIdsByUserId(userId);

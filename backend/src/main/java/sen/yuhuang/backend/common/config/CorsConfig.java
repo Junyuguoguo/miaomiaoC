@@ -13,7 +13,8 @@ public class CorsConfig implements WebMvcConfigurer {
                 // 允许前端开发服务器地址
                 // 关键修复：用 allowedOriginPatterns 替代 allowedOrigins（SpringBoot 2.4+ 适配）
                 .allowedOriginPatterns(
-                        "http://localhost:5173",
+                        "http://localhost:*",
+                        "http://127.0.0.1:*",
                         "http://106.53.50.72:5173",
                         "http://aa.junyuguoguo.xyz",
                         "https://aa.junyuguoguo.xyz"

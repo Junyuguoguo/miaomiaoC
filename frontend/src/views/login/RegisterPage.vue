@@ -217,7 +217,13 @@ const handleRegister = async () => {
         }
 
       } catch (error) {
-        ElMessage.error(error.response?.data?.message || '注册失败，请重试')
+        console.error('注册失败:', error)
+        // 如果错误已经在拦截器中显示了，这里不需要重复显示
+        // 但为了保险起见，可以添加一个通用的错误提示
+        if (!error.response) {
+          // 网络错误或超时，拦截器已经显示了"网络错误，请检查网络连接"
+          ElMessage.error(error.message || '注册失败，请检查网络连接')
+        }
       } finally {
         loading.value = false
       }

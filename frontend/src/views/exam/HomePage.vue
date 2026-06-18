@@ -13,7 +13,7 @@
           <img v-if="userInfo.avatar" :src="userInfo.avatar" alt="头像" />
           <el-icon v-else><User /></el-icon>
         </el-avatar>
-        <div class="user-name">{{ userInfo.realName || userInfo.username }}</div>
+        <div class="user-name">{{ studentDisplayName }}</div>
         <div class="user-role">{{ userRoleName }}</div>
       </div>
       <!-- 导航菜单 -->
@@ -39,6 +39,10 @@
           <el-icon><Collection /></el-icon>
           <span>题库合集</span>
         </el-menu-item>
+        <el-menu-item index="6" @click="handleToVipUpgrade">
+          <el-icon><Medal /></el-icon>
+          <span>升级VIP</span>
+        </el-menu-item>
       </el-menu>
       <!-- 退出登录 -->
       <div class="logout-btn-wrap">
@@ -58,6 +62,15 @@
       <div class="content-header">
         <div class="header-title">{{ currentTitle }}</div>
         <div class="header-actions">
+          <el-button
+              v-if="userInfo.RoleId === 1"
+              type="primary"
+              plain
+              @click="handleToVipUpgrade"
+          >
+            <el-icon><Medal /></el-icon>
+            升级VIP
+          </el-button>
           <el-button
               type="text"
               @click="handleRefresh"
@@ -100,7 +113,19 @@
                   </div>
                   <div class="info-item">
                     <span class="label">真实姓名：</span>
-                    <span class="value">{{ userInfo.realName || '未设置' }}</span>
+                    <span class="value">{{ personalRealNameText }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="label">学生页隐藏真名：</span>
+                    <span class="value">
+                      <el-switch
+                          v-model="hideRealNameOnStudentPage"
+                          :disabled="!hasRealName"
+                          active-text="隐藏"
+                          inactive-text="显示"
+                          @change="handleRealNamePrivacyChange"
+                      />
+                    </span>
                   </div>
                   <div class="info-item">
                     <span class="label">手机号：</span>
@@ -198,8 +223,11 @@
         <!-- 编辑资料模态框 -->
         <el-dialog
             v-model="editInfoDialogVisible"
-            title="编辑个人资料"
+            :title="mustCompleteRealName ? '请填写真实姓名' : '编辑个人资料'"
             width="600px"
+            :close-on-click-modal="!mustCompleteRealName"
+            :close-on-press-escape="!mustCompleteRealName"
+            :show-close="!mustCompleteRealName"
             @close="resetEditForm"
         >
           <!-- 头像选择区域 -->
@@ -240,7 +268,7 @@
             </el-form-item>
           </el-form>
           <template #footer>
-            <el-button @click="editInfoDialogVisible = false">取消</el-button>
+            <el-button v-if="!mustCompleteRealName" @click="editInfoDialogVisible = false">取消</el-button>
             <el-button type="primary" @click="submitEditInfo">提交</el-button>
           </template>
         </el-dialog>
@@ -655,12 +683,15 @@
                 <el-pagination
                     v-model:current-page="bankPage.current"
                     v-model:page-size="bankPage.size"
-                    :page-sizes="[3, 6, 12, 24]"
+                    :page-sizes="[6, 12, 24, 48]"
                     layout="total, sizes, prev, pager, next, jumper"
                     :total="totalBankCount"
                     @size-change="handleBankSizeChange"
                     @current-change="handleBankCurrentChange"
                 />
+                <div v-if="hasMoreBankPage" class="bank-next-hint">
+                  下一页还有 {{ remainingBankCount }} 个题库
+                </div>
               </div>
             </template>
 
@@ -899,6 +930,83 @@
             </template>
           </el-card>
         </div>
+
+        <!-- 7. VIP升级 -->
+        <div v-if="currentMenu === '6'" class="page-content vip-upgrade-page">
+          <section class="vip-hero-panel">
+            <div>
+              <div class="eyebrow">VIP Access</div>
+              <h2>开通 VIP，解锁更多考试与题库</h2>
+              <p>
+                VIP 适合需要集中冲刺机考、反复练习真题和参加会员专属模拟考试的同学。选择套餐后联系管理员或教师，确认后会手动为账号开通。
+              </p>
+            </div>
+            <div class="vip-status-card">
+              <span class="status-label">当前账号</span>
+              <strong>{{ isVipActive ? 'VIP有效' : '普通学生' }}</strong>
+              <small>{{ userInfo.vipExpireTime ? `到期：${formatDate(userInfo.vipExpireTime)}` : '暂未开通VIP' }}</small>
+            </div>
+          </section>
+
+          <!-- 密钥兑换 -->
+          <section class="vip-redeem-section">
+            <div class="redeem-card">
+              <div class="redeem-info">
+                <h3>密钥兑换</h3>
+                <p>如果你有VIP激活密钥，输入后即可直接开通VIP。</p>
+              </div>
+              <div class="redeem-action">
+                <el-input
+                  v-model="redeemKeyCode"
+                  placeholder="请输入VIP密钥，如 XXXX-XXXX-XXXX-XXXX"
+                  clearable
+                  style="width:320px"
+                />
+                <el-button type="primary" :loading="redeemLoading" @click="handleRedeemKey">兑换</el-button>
+              </div>
+            </div>
+          </section>
+
+          <el-skeleton :loading="vipLoading" animated :rows="4">
+            <template #default>
+              <div v-if="vipPlanList.length" class="vip-plan-grid">
+                <article
+                    v-for="plan in vipPlanList"
+                    :key="plan.id"
+                    class="vip-plan-card"
+                >
+                  <div class="plan-topline">
+                    <span class="plan-name">{{ plan.planName }}</span>
+                    <el-tag type="warning" effect="plain">{{ plan.durationDays }}天</el-tag>
+                  </div>
+                  <div class="plan-price">
+                    <span>¥</span>{{ formatPrice(plan.price) }}
+                  </div>
+                  <p class="plan-benefits">{{ plan.benefits || '解锁VIP考试、VIP题库与后续会员内容。' }}</p>
+
+                  <div class="contact-panel">
+                    <div class="contact-row">
+                      <span>管理员QQ</span>
+                      <strong>{{ plan.contactQq || '后台待设置' }}</strong>
+                      <el-button size="small" text @click="copyContact(plan.contactQq)">复制</el-button>
+                    </div>
+                    <div class="contact-row">
+                      <span>微信</span>
+                      <strong>{{ plan.contactWechat || '后台待设置' }}</strong>
+                      <el-button size="small" text @click="copyContact(plan.contactWechat)">复制</el-button>
+                    </div>
+                  </div>
+
+                  <div class="plan-note">
+                    <el-icon><ChatDotRound /></el-icon>
+                    <span>{{ plan.contactNote || '联系时请发送账号、套餐名称和付款截图。' }}</span>
+                  </div>
+                </article>
+              </div>
+              <el-empty v-else description="管理员还没有配置VIP套餐" />
+            </template>
+          </el-skeleton>
+        </div>
       </div>
     </div>
   </div>
@@ -911,7 +1019,8 @@ import { ElMessage ,ElLoading,ElMessageBox } from 'element-plus'
 import {
   User, UserFilled, Document, DataBoard, EditPen, Timer, Collection,
   SwitchButton, Refresh, Setting, Camera, Edit, Clock, Search,
-  Plus, Star, Calendar, Upload,Medal, Warning
+  Plus, Star, StarFilled, Calendar, Upload, Medal, Warning, Promotion,
+  TrendCharts, View, ChatDotRound
 } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import { updateUserInfo,getStatsData } from '@/api/auth.js'
@@ -925,16 +1034,19 @@ import {
   toggleCollectBank,
   removeWrongQuestion, addViewCount
 } from "@/api/question-bank.js";
+import { getVipPlans } from "@/api/vip.js";
+import { redeemVipKey } from "@/api/vip-key.js";
 
 const router = useRouter()
 const title = ref('')
 const version = ref('')
+const REAL_NAME_HIDE_KEY = 'student_real_name_hidden'
 // 当前选中的菜单和标题
 const currentMenu = ref('1')
 const currentTitle = ref('个人中心')
 
-//用户信息
-const userStore = ref(null)
+// 用户信息
+const userStore = useUserStore()
 
 // 搜索关键词
 const searchKeyword = ref('')
@@ -1021,6 +1133,8 @@ const avatarUrl = ref('')  // 预览头像URL
 // 编辑资料模态框相关
 const editInfoDialogVisible = ref(false)
 const editFormRef = ref(null)
+const mustCompleteRealName = ref(false)
+const hideRealNameOnStudentPage = ref(localStorage.getItem(REAL_NAME_HIDE_KEY) === '1')
 
 // 编辑表单数据（回显用户当前信息）
 const editForm = reactive({
@@ -1034,6 +1148,18 @@ const editForm = reactive({
 
 // 表单验证规则
 const editFormRules = reactive({
+  real_name: [
+    {
+      validator: (rule, value, callback) => {
+        if (!String(value || '').trim()) {
+          callback(new Error('请输入真实姓名'))
+          return
+        }
+        callback()
+      },
+      trigger: 'blur'
+    }
+  ],
   phone: [
     { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
   ],
@@ -1043,7 +1169,7 @@ const editFormRules = reactive({
 })
 
 // 编辑资料按钮点击事件
-const handleEditInfo = () => {
+const fillEditForm = () => {
   // 回显用户当前信息到表单
   editForm.real_name = userInfo.value.realName || ''
   editForm.phone = userInfo.value.phone || ''
@@ -1054,9 +1180,26 @@ const handleEditInfo = () => {
 
   // 设置当前选中的头像（如果有就显示，没有就为空）
   selectedAvatar.value = userInfo.value.avatar || ''
+}
+
+const handleEditInfo = () => {
+  fillEditForm()
 
   // 打开模态框
   editInfoDialogVisible.value = true
+}
+
+const requireRealNameProfile = () => {
+  if (hasRealName.value) return
+  mustCompleteRealName.value = true
+  fillEditForm()
+  editInfoDialogVisible.value = true
+  ElMessage.warning('请先填写真实姓名后再使用网站')
+}
+
+const handleRealNamePrivacyChange = (hidden) => {
+  localStorage.setItem(REAL_NAME_HIDE_KEY, hidden ? '1' : '0')
+  ElMessage.success(hidden ? '学生页已隐藏真实姓名' : '学生页已显示真实姓名')
 }
 
 // 重置编辑表单
@@ -1093,8 +1236,9 @@ const submitEditInfo = async () => {
     const submitData = {
       ...editForm,
       avatar: selectedAvatar.value,  // 使用选中的头像
-      userId: newUserInfo.id
+      userId: newUserInfo.id || userInfo.value.id || userStore.getUserId
     }
+    submitData.real_name = String(submitData.real_name || '').trim()
 
     // 调用更新接口
     const res = await updateUserInfo(submitData)
@@ -1124,6 +1268,7 @@ const submitEditInfo = async () => {
       userInfo.value.score = submitData.score
 
       // 关闭模态框
+      mustCompleteRealName.value = false
       editInfoDialogVisible.value = false
     } else {
       ElMessage.error(res.message || '资料修改失败！')
@@ -1372,12 +1517,102 @@ const filteredBankList = computed(() => {
 // 分页参数
 const bankPage = reactive({
   current: 1,
-  size: 3
+  size: 6
 })
 const handleToQuestionList = () => {
   currentMenu.value = '5'
   currentTitle.value = '题库合集'
   loadAllBanks()
+}
+
+const vipLoading = ref(false)
+const vipPlanList = ref([])
+
+// VIP密钥兑换
+const redeemKeyCode = ref('')
+const redeemLoading = ref(false)
+
+const handleRedeemKey = async () => {
+  if (!redeemKeyCode.value?.trim()) {
+    ElMessage.warning('请输入VIP密钥')
+    return
+  }
+  const currentUserId = userStore.getUserId || localStorage.getItem('userId')
+  if (!currentUserId) {
+    ElMessage.error('登录信息异常，请重新登录后再兑换')
+    router.push('/login')
+    return
+  }
+  redeemLoading.value = true
+  try {
+    const res = await redeemVipKey({
+      keyCode: redeemKeyCode.value.trim(),
+      userId: currentUserId
+    })
+    if (res.code === 200) {
+      ElMessage.success(res.message || 'VIP开通成功')
+      redeemKeyCode.value = ''
+      if (res.data) {
+        userStore.setUser(res.data)
+        localStorage.setItem('userId', res.data.id || currentUserId)
+        loadUserData()
+      }
+    } else {
+      ElMessage.error(res.message || '兑换失败')
+    }
+  } catch (error) {
+    console.error('兑换VIP密钥失败:', error)
+  } finally {
+    redeemLoading.value = false
+  }
+}
+
+const handleToVipUpgrade = () => {
+  currentMenu.value = '6'
+  currentTitle.value = '升级VIP'
+  loadVipPlans()
+}
+
+const loadVipPlans = async (forceRefresh = false) => {
+  if (!forceRefresh && vipPlanList.value.length > 0) {
+    return
+  }
+  try {
+    vipLoading.value = true
+    const res = await getVipPlans()
+    if (res.code === 200) {
+      vipPlanList.value = res.data || []
+    } else {
+      ElMessage.error(res.message || 'VIP套餐加载失败')
+    }
+  } catch (error) {
+    console.error('VIP套餐加载失败:', error)
+    ElMessage.error('VIP套餐加载失败，请稍后重试')
+  } finally {
+    vipLoading.value = false
+  }
+}
+
+const formatPrice = (price) => {
+  const number = Number(price || 0)
+  return new Intl.NumberFormat('zh-CN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(number)
+}
+
+const copyContact = async (value) => {
+  if (!value || value === '后台待设置') {
+    ElMessage.warning('管理员还没有设置这个联系方式')
+    return
+  }
+  try {
+    await navigator.clipboard.writeText(value)
+    ElMessage.success('联系方式已复制')
+  } catch (error) {
+    console.error('复制失败:', error)
+    ElMessage.info(`请手动复制：${value}`)
+  }
 }
 // 获取难度对应的标签类型
 const getLevelTagType = (level) => {
@@ -1399,6 +1634,10 @@ const paginatedBankList = computed(() => {
 const totalBankCount = computed(() => {
   return filteredBankList.value.length
 })
+const remainingBankCount = computed(() => {
+  return Math.max(totalBankCount.value - bankPage.current * bankPage.size, 0)
+})
+const hasMoreBankPage = computed(() => remainingBankCount.value > 0)
 // 加载所有题库（一次性请求）
 const loadAllBanks = async () => {
   try {
@@ -1521,6 +1760,24 @@ const handleCollectBank = async (bank) => {
 }
 // 开始练习
 const handlePractice = async (bank) => {
+  if (bank.isVip === 1 && !isVipActive.value) {
+    try {
+      await ElMessageBox.confirm(
+          '该题库为VIP专属题库，开通VIP后即可练习。请联系管理员购买VIP密钥，或前往升级VIP页面查看联系方式。',
+          '需要开通VIP',
+          {
+            confirmButtonText: '去升级VIP',
+            cancelButtonText: '稍后再说',
+            type: 'warning'
+          }
+      )
+      handleToVipUpgrade()
+    } catch {
+      // 用户取消，无需处理
+    }
+    return
+  }
+
   // 更新题库参与次数
   updateBankViewCount(bank.id);
 
@@ -1703,7 +1960,8 @@ const handleMenuSelect = (index) => {
     '2': '考试记录',
     '3': '我的笔记',
     '4': '在线考试',
-    '5': '题库合集'
+    '5': '题库合集',
+    '6': '升级VIP'
   }
   currentTitle.value = titleMap[index]
 }
@@ -1725,6 +1983,20 @@ const userInfo = ref({
   avatar: ''
 })
 
+const hasRealName = computed(() => Boolean(String(userInfo.value.realName || '').trim()))
+
+const studentDisplayName = computed(() => {
+  if (hasRealName.value && !hideRealNameOnStudentPage.value) {
+    return userInfo.value.realName
+  }
+  return userInfo.value.username || '学生'
+})
+
+const personalRealNameText = computed(() => {
+  if (!hasRealName.value) return '未设置'
+  return hideRealNameOnStudentPage.value ? '已隐藏' : userInfo.value.realName
+})
+
 // 添加角色名称计算属性
 const userRoleName = computed(() => {
   const roleMap = {
@@ -1734,6 +2006,16 @@ const userRoleName = computed(() => {
     4: '管理员'
   }
   return roleMap[userInfo.value.RoleId] || '未知角色'
+})
+
+const isVipActive = computed(() => {
+  if (Number(userInfo.value.RoleId) === 2) {
+    return true
+  }
+  if (!userInfo.value.vipExpireTime) {
+    return false
+  }
+  return dayjs(userInfo.value.vipExpireTime).isAfter(dayjs())
 })
 
 // 添加日期格式化函数
@@ -1752,8 +2034,6 @@ const stats = ref({
 // 加载用户信息
 // 加载用户信息
 const loadUserData = () => {
-  const userStore = useUserStore()
-
   // 从 localStorage 获取角色信息
   const roleStr = localStorage.getItem('user_role')
   let roleId = null
@@ -1780,8 +2060,8 @@ const loadUserData = () => {
   userInfo.value.createTime = userStore.getCreateTime
   userInfo.value.avatar = userStore.getUserAvatar || ''
 
-  // 设置角色ID（优先使用从 localStorage 解析的）
-  userInfo.value.RoleId = roleId || userStore.getUserRoleId
+  // 设置角色ID（优先使用最新用户信息，localStorage 角色作为旧数据兜底）
+  userInfo.value.RoleId = userStore.getUserRoleId || roleId
 
   console.log('加载的用户信息:', userInfo.value)
 }
@@ -1792,6 +2072,7 @@ onMounted(async () => {
 
   // 加载个人信息
   loadUserData()
+  requireRealNameProfile()
 
   // 加载统计数据
   const statsData = await loadStatsData(localStorage.getItem('userId'))
@@ -1920,9 +2201,12 @@ const handleRefresh = async () => {
         break
       case '5':
         await loadAllBanks(true)
-        if (activeBankTab === 'wrong'){
+        if (activeBankTab.value === 'wrong'){
           await loadWrongQuestions(true);
         }
+        break
+      case '6':
+        await loadVipPlans(true)
         break
     }
 
@@ -2930,11 +3214,13 @@ const handleLogout = () => {
   border-radius: 12px;
   overflow: hidden;
   cursor: pointer;
+  border: 1px solid var(--app-border);
 }
 
 .bank-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.12);
+  border-color: var(--app-primary-light, rgba(37, 99, 235, 0.3));
 }
 
 .bank-card-content {
@@ -3028,7 +3314,16 @@ const handleLogout = () => {
   padding: 16px 20px;
   border-top: 1px solid #f0f0f0;
   display: flex;
+  align-items: center;
+  gap: 16px;
   justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.bank-next-hint {
+  color: #64748b;
+  font-size: 13px;
+  white-space: nowrap;
 }
 
 /* 响应式适配 */
@@ -3651,6 +3946,356 @@ const handleLogout = () => {
     align-self: center;
     width: 100%;
     max-width: 200px;
+  }
+}
+
+/* Visual refresh: quiet exam workspace */
+.student-center-container {
+  min-height: 100vh;
+  background: var(--app-bg);
+}
+
+.sidebar {
+  background: var(--app-surface);
+  border-right: 1px solid var(--app-border);
+  box-shadow: none;
+}
+
+.sidebar-header {
+  border-bottom-color: var(--app-border);
+}
+
+.sidebar-header h3,
+.header-title {
+  color: var(--app-text);
+  font-weight: 750;
+  letter-spacing: 0;
+}
+
+.user-info {
+  border-bottom-color: var(--app-border);
+}
+
+.user-name {
+  color: var(--app-text);
+  font-weight: 700;
+}
+
+.user-role {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  margin-top: 8px;
+  padding: 3px 10px;
+  color: var(--app-primary);
+  background: var(--app-primary-soft);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.sidebar-menu :deep(.el-menu-item) {
+  margin: 4px 12px;
+  border-radius: 8px;
+  color: var(--app-text-muted);
+  font-weight: 650;
+}
+
+.sidebar-menu :deep(.el-menu-item:hover) {
+  color: var(--app-primary);
+  background: var(--app-primary-soft);
+}
+
+.sidebar-menu :deep(.el-menu-item.is-active) {
+  color: var(--app-primary);
+  background: var(--app-primary-soft);
+}
+
+.main-content {
+  background:
+      linear-gradient(180deg, #f8fbff 0%, var(--app-bg) 42%, #edf4fb 100%);
+}
+
+.content-header {
+  min-height: 56px;
+  padding: 0 2px;
+}
+
+.content-body {
+  background: transparent;
+  border-radius: 0;
+}
+
+.page-content {
+  padding: 4px 0 28px;
+}
+
+.page-content > .el-card,
+.stats-card > .el-card,
+.info-card {
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  box-shadow: var(--app-shadow-sm);
+}
+
+.info-item .label {
+  color: var(--app-text-muted);
+  font-weight: 650;
+}
+
+.info-item .value,
+.stat-value {
+  color: var(--app-text);
+  font-weight: 750;
+}
+
+.stats-grid,
+.exam-list,
+.bank-list {
+  gap: 16px;
+}
+
+.stat-item,
+.exam-card,
+.bank-card {
+  border-radius: var(--app-radius);
+}
+
+.bank-card,
+.exam-card {
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.bank-card:hover,
+.exam-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--app-border-strong);
+}
+
+.vip-tag,
+.vip-text {
+  color: var(--app-vip);
+  font-weight: 800;
+}
+
+.vip-hero-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 20px;
+  align-items: stretch;
+  padding: 32px;
+  margin-bottom: 18px;
+  background: linear-gradient(135deg, #fef9ef 0%, #fff5e6 40%, #ffecd2 100%);
+  border: 1px solid #f5deb3;
+  border-radius: var(--app-radius);
+  box-shadow: 0 4px 20px rgba(255, 193, 7, 0.1);
+}
+
+.eyebrow {
+  color: #e6a817;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.vip-hero-panel h2 {
+  margin: 8px 0 10px;
+  color: #5a3e00;
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.vip-hero-panel p {
+  max-width: 680px;
+  margin: 0;
+  color: #8b6914;
+  line-height: 1.75;
+}
+
+.vip-status-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid #f0d9a0;
+  border-radius: var(--app-radius-sm);
+  backdrop-filter: blur(4px);
+}
+
+.status-label {
+  color: #a07820;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.vip-status-card strong {
+  margin: 6px 0;
+  color: #5a3e00;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.vip-status-card small {
+  color: #8b6914;
+}
+
+.vip-redeem-section {
+  margin-bottom: 18px;
+}
+
+.redeem-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 28px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  box-shadow: var(--app-shadow-sm);
+}
+
+.redeem-info h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--app-text);
+}
+
+.redeem-info p {
+  margin: 0;
+  color: var(--app-text-muted);
+  font-size: 14px;
+}
+
+.redeem-action {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.vip-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.vip-plan-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 340px;
+  padding: 24px;
+  background: linear-gradient(180deg, #fffdf7 0%, #fff 100%);
+  border: 1px solid #f0d9a0;
+  border-radius: var(--app-radius);
+  box-shadow: 0 2px 12px rgba(255, 193, 7, 0.08);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.vip-plan-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(255, 193, 7, 0.15);
+}
+
+.plan-topline,
+.contact-row,
+.plan-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.plan-topline {
+  justify-content: space-between;
+}
+
+.plan-name {
+  color: #5a3e00;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.plan-price {
+  margin: 20px 0 12px;
+  color: #d4930a;
+  font-size: 38px;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.plan-price span {
+  margin-right: 4px;
+  color: #a07820;
+  font-size: 18px;
+}
+
+.plan-benefits {
+  min-height: 54px;
+  margin: 0 0 18px;
+  color: #8b6914;
+}
+
+.contact-panel {
+  display: grid;
+  gap: 8px;
+  margin-top: auto;
+  padding: 12px;
+  background: var(--app-surface-soft);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-sm);
+}
+
+.contact-row {
+  justify-content: space-between;
+  min-height: 32px;
+}
+
+.contact-row span {
+  color: var(--app-text-muted);
+  font-size: 13px;
+}
+
+.contact-row strong {
+  min-width: 0;
+  color: var(--app-text);
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.plan-note {
+  align-items: flex-start;
+  margin-top: 14px;
+  color: var(--app-text-muted);
+  line-height: 1.6;
+}
+
+@media (max-width: 1024px) {
+  .vip-plan-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .vip-hero-panel {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .student-center-container {
+    display: block;
+  }
+
+  .main-content {
+    padding: 16px;
+  }
+
+  .vip-hero-panel {
+    padding: 20px;
   }
 }
 </style>

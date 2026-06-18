@@ -4,6 +4,7 @@
       <!-- 标题 -->
       <div class="login-header">
         <h2>{{title}}@{{version}}</h2>
+        <p>C语言在线刷题与模拟考试平台</p>
       </div>
 
       <el-form
@@ -219,27 +220,39 @@ const handleForgotPassword = () => {
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: #f5f5f5;  /* 改为灰白色背景 */
+  padding: 32px 16px;
+  background:
+      linear-gradient(180deg, rgba(248, 251, 255, 0.96), rgba(238, 244, 251, 0.96)),
+      repeating-linear-gradient(0deg, rgba(37, 99, 235, 0.05) 0 1px, transparent 1px 40px),
+      repeating-linear-gradient(90deg, rgba(37, 99, 235, 0.04) 0 1px, transparent 1px 40px);
 }
 
 .login-box {
-  width: 400px;
-  padding: 40px;
-  background: white;
-  border-radius: 16px;  /* 增加圆角 */
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);  /* 更柔和的阴影 */
+  width: min(440px, 100%);
+  padding: 42px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(37, 99, 235, 0.1);
+  border-radius: 16px;
+  box-shadow: 0 8px 40px rgba(37, 99, 235, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .login-header {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 32px;
 }
 
 .login-header h2 {
-  color: #333;
-  font-size: 24px;
-  font-weight: 500;
+  color: var(--app-text);
+  font-size: 28px;
+  font-weight: 750;
+  letter-spacing: 0;
   margin: 0;
+}
+
+.login-header p {
+  margin-top: 8px;
+  color: var(--app-text-muted);
+  font-size: 14px;
 }
 
 .login-form {
@@ -248,20 +261,20 @@ const handleForgotPassword = () => {
 
 /* 自定义输入框样式 */
 .custom-input :deep(.el-input__wrapper) {
-  background-color: #fafafa;  /* 稍微深一点的背景 */
-  border: 1px solid #e8e8e8;  /* 添加浅边框 */
+  background-color: var(--app-surface-soft);
+  border: 1px solid var(--app-border);
   box-shadow: none;
   padding: 8px 15px;
-  border-radius: 8px;  /* 输入框圆角 */
+  border-radius: 8px;
 }
 
 .custom-input :deep(.el-input__wrapper:hover) {
-  border-color: #409EFF;
+  border-color: var(--app-primary);
 }
 
 .custom-input :deep(.el-input__wrapper.is-focus) {
-  border-color: #409EFF;
-  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.1);
+  border-color: var(--app-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
 .custom-input :deep(.el-input__inner) {
@@ -276,55 +289,60 @@ const handleForgotPassword = () => {
 
 .role-buttons {
   display: flex;
-  gap: 12px;  /* 增加按钮间距 */
+  gap: 10px;
   width: 100%;
 }
 
 .role-buttons .el-button {
   flex: 1;
-  height: 44px;  /* 稍微增高 */
+  height: 44px;
   border-radius: 8px;  /* 按钮圆角 */
   font-size: 14px;
-  font-weight: 500;
-  transition: all 0.3s ease;
+  font-weight: 650;
+  transition: color 180ms ease, border-color 180ms ease, background-color 180ms ease, transform 180ms ease;
 }
 
 .role-buttons .el-button.is-plain {
-  background: #fafafa;
-  border: 1px solid #e8e8e8;  /* 添加边框 */
-  color: #666;
+  background: var(--app-surface-soft);
+  border: 1px solid var(--app-border);
+  color: var(--app-text-muted);
 }
 
 .role-buttons .el-button.is-plain:hover {
-  background: #ecf5ff;
-  border-color: #409EFF;
-  color: #409EFF;
-  transform: translateY(-1px);  /* 轻微上浮效果 */
-  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.2);
+  background: var(--app-primary-soft);
+  border-color: var(--app-primary);
+  color: var(--app-primary);
+  transform: translateY(-1px);
 }
 
-.role-buttons .active-role {
-  background: #409EFF !important;
-  border-color: #409EFF !important;
+.role-buttons .active-role,
+.role-buttons :deep(.active-role) {
+  background: var(--app-primary) !important;
+  border-color: var(--app-primary) !important;
   color: white !important;
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.3);
+  box-shadow: 0 8px 22px rgba(37, 99, 235, 0.22);
+}
+
+.role-buttons :deep(.active-role span),
+.role-buttons :deep(.active-role .el-icon) {
+  color: white !important;
 }
 
 /* 登录按钮 */
 .login-button {
   width: 100%;
-  height: 48px;  /* 增加高度 */
+  height: 48px;
   font-size: 16px;
-  font-weight: 500;
-  border-radius: 8px;  /* 按钮圆角 */
+  font-weight: 700;
+  border-radius: 8px;
   margin-top: 10px;
-  transition: all 0.3s ease;
+  transition: transform 180ms ease, box-shadow 180ms ease;
 }
 
 .login-button:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.24);
 }
 
 /* 底部链接 */
@@ -336,23 +354,25 @@ const handleForgotPassword = () => {
 }
 
 .login-footer .el-link {
-  color: #666;  /* 稍微浅一点的颜色 */
+  color: var(--app-text-muted);
   text-decoration: none;
-  font-weight: 400;
-  transition: color 0.3s ease;
+  font-weight: 600;
+  transition: color 180ms ease;
 }
 
 .login-footer .el-link:hover {
-  color: #409EFF;
+  color: var(--app-primary);
   text-decoration: none;
 }
 
 /* 响应式调整 */
 @media (max-width: 768px) {
   .login-box {
-    width: 90%;
     padding: 30px 20px;
-    border-radius: 12px;
+  }
+
+  .role-buttons {
+    flex-direction: column;
   }
 }
 </style>
