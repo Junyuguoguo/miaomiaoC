@@ -18,6 +18,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import org.springframework.http.MediaType;
+
 @RestController
 @RequestMapping("/api/auth")
 public class UserController {
@@ -177,8 +179,17 @@ public class UserController {
             return Result.error("文件上传失败: " + e.getMessage());
         }
 
-        String avatarUrl = "/uploads/avatars/" + filename;
+        String avatarUrl = "/api/auth/avatar/" + filename;
         return Result.ok(avatarUrl);
+    }
+
+    @GetMapping(value = "/avatar/{filename}", produces = {MediaType.IMAGE_JPEG_VALUE, MediaType.IMAGE_PNG_VALUE, MediaType.IMAGE_WEBP_VALUE})
+    public byte[] getAvatar(@PathVariable String filename) throws IOException {
+        Path filePath = Paths.get(System.getProperty("user.dir"), "uploads", "avatars", filename);
+        if (Files.exists(filePath)) {
+            return Files.readAllBytes(filePath);
+        }
+        return new byte[0];
     }
 
 }
