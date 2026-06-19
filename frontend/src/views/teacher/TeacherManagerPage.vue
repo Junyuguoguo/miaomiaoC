@@ -47,6 +47,14 @@
           <el-icon><Key /></el-icon>
           <span>VIP密钥管理</span>
         </el-menu-item>
+        <el-menu-item index="8">
+          <el-icon><ChatDotRound /></el-icon>
+          <span>在线交流</span>
+        </el-menu-item>
+        <el-menu-item index="9">
+          <el-icon><User /></el-icon>
+          <span>个人中心</span>
+        </el-menu-item>
       </el-menu>
       <!-- 退出登录 -->
       <div class="logout-btn-wrap">
@@ -1389,6 +1397,12 @@ const handleMenuSelect = async (index) => {
   } else if (index === '7') {
     console.log('加载VIP密钥')
     await loadVipKeyList(true)
+  } else if (index === '8') {
+    router.push('/chat')
+    return
+  } else if (index === '9') {
+    router.push('/exam')
+    return
   }
   currentMenu.value = index
   const titleMap = {
@@ -1398,7 +1412,9 @@ const handleMenuSelect = async (index) => {
     '4': '违规记录管理',
     '5': '数据统计',
     '6': 'VIP设置',
-    '7': 'VIP密钥管理'
+    '7': 'VIP密钥管理',
+    '8': '在线交流',
+    '9': '个人中心'
   }
   currentTitle.value = titleMap[index]
 }

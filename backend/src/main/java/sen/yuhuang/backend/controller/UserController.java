@@ -159,8 +159,8 @@ public class UserController {
         // Generate unique filename
         String filename = "user_" + (username != null ? username : "unknown") + "_" + UUID.randomUUID().toString().substring(0, 8) + "." + ext;
 
-        // Save file
-        String uploadDir = "uploads/avatars/";
+        // Save file — use absolute path so transferTo doesn't resolve into Tomcat temp dir
+        String uploadDir = System.getProperty("user.dir") + "/uploads/avatars/";
         File dir = new File(uploadDir);
         if (!dir.exists()) {
             dir.mkdirs();
