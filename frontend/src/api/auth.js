@@ -89,8 +89,6 @@ export function uploadAvatar(file) {
         url: '/api/auth/uploadAvatar',
         method: 'post',
         data: formData,
-        headers: {
-            'Content-Type': 'multipart/form-data'
-        }
+        headers: { 'Content-Type': undefined }
     })
 }
