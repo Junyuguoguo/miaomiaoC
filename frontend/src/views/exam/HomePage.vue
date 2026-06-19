@@ -43,6 +43,10 @@
           <el-icon><Medal /></el-icon>
           <span>升级VIP</span>
         </el-menu-item>
+        <el-menu-item index="7" @click="handleToChat">
+          <el-icon><ChatDotRound /></el-icon>
+          <span>在线交流</span>
+        </el-menu-item>
       </el-menu>
       <!-- 退出登录 -->
       <div class="logout-btn-wrap">
@@ -296,10 +300,37 @@
                 <div class="avatar-name-modal">{{ avatar.name }}</div>
               </div>
             </div>
+            <el-divider />
+            <div class="upload-avatar-section">
+              <el-button type="primary" plain @click="triggerAvatarUpload">
+                <el-icon><Upload /></el-icon>
+                上传自定义头像
+              </el-button>
+            </div>
           </div>
           <template #footer>
             <el-button @click="showAvatarSelector = false">取消</el-button>
             <el-button type="primary" @click="showAvatarSelector = false">确定</el-button>
+          </template>
+        </el-dialog>
+
+        <!-- 裁剪头像弹窗 -->
+        <el-dialog
+            v-model="cropDialogVisible"
+            title="裁剪头像"
+            width="460px"
+            :append-to-body="true"
+            :close-on-click-modal="false"
+            @close="closeCropDialog"
+        >
+          <div class="crop-container">
+            <img ref="cropImageRef" class="crop-image" alt="裁剪图片" />
+          </div>
+          <template #footer>
+            <el-button @click="closeCropDialog">取消</el-button>
+            <el-button type="primary" :loading="cropUploading" @click="confirmCropUpload">
+              确认上传
+            </el-button>
           </template>
         </el-dialog>
         <!-- 2. 考试记录 -->
@@ -1013,7 +1044,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed,onMounted } from 'vue'
+import { ref, reactive, computed,onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage ,ElLoading,ElMessageBox } from 'element-plus'
 import {
@@ -1023,7 +1054,7 @@ import {
   TrendCharts, View, ChatDotRound
 } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
-import { updateUserInfo,getStatsData } from '@/api/auth.js'
+import { updateUserInfo,getStatsData,uploadAvatar } from '@/api/auth.js'
 import {useUserStore,STORAGE_KEYS} from "@/stores/user.js";
 import {batchUpdateExamStatus, getExamList, getExamRecordList} from "@/api/exam.js";
 import {
@@ -1036,6 +1067,8 @@ import {
 } from "@/api/question-bank.js";
 import { getVipPlans } from "@/api/vip.js";
 import { redeemVipKey } from "@/api/vip-key.js";
+import Cropper from 'cropperjs'
+import 'cropperjs/dist/cropper.css'
 
 const router = useRouter()
 const title = ref('')
@@ -1124,6 +1157,90 @@ const avatarList = ref([
 ])
 
 const avatarUrl = ref('')  // 预览头像URL
+
+// Avatar upload & crop
+const cropDialogVisible = ref(false)
+const cropImageRef = ref(null)
+let cropperInstance = null
+const cropUploading = ref(false)
+
+// Trigger file input click
+const triggerAvatarUpload = () => {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = 'image/jpeg,image/png,image/webp'
+  input.onchange = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    // Validate
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      ElMessage.error('仅支持 JPG、PNG、WebP 格式')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      ElMessage.error('文件大小不能超过 5MB')
+      return
+    }
+
+    // Show crop dialog
+    cropDialogVisible.value = true
+    nextTick(() => {
+      if (cropImageRef.value) {
+        cropImageRef.value.src = URL.createObjectURL(file)
+        cropperInstance = new Cropper(cropImageRef.value, {
+          aspectRatio: 1,
+          viewMode: 1,
+          dragMode: 'move',
+          autoCropArea: 0.9,
+          responsive: true,
+          background: false,
+          guides: false,
+          cropBoxMovable: true,
+          cropBoxResizable: true,
+        })
+      }
+    })
+  }
+  input.click()
+}
+
+// Confirm crop and upload
+const confirmCropUpload = async () => {
+  if (!cropperInstance) return
+  cropUploading.value = true
+  try {
+    const canvas = cropperInstance.getCroppedCanvas({
+      width: 200,
+      height: 200,
+      imageSmoothingQuality: 'high'
+    })
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85))
+    const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' })
+    const res = await uploadAvatar(file)
+    if (res && res.code === 200) {
+      selectedAvatar.value = res.data
+      ElMessage.success('头像上传成功')
+      closeCropDialog()
+    } else {
+      ElMessage.error(res?.message || '上传失败')
+    }
+  } catch (err) {
+    console.error('上传失败:', err)
+    ElMessage.error('头像上传失败')
+  } finally {
+    cropUploading.value = false
+  }
+}
+
+// Close crop dialog and destroy cropper
+const closeCropDialog = () => {
+  if (cropperInstance) {
+    cropperInstance.destroy()
+    cropperInstance = null
+  }
+  cropDialogVisible.value = false
+}
 
 
 // 编辑头像=======================================================
@@ -1571,6 +1688,10 @@ const handleToVipUpgrade = () => {
   currentMenu.value = '6'
   currentTitle.value = '升级VIP'
   loadVipPlans()
+}
+
+const handleToChat = () => {
+  router.push('/chat')
 }
 
 const loadVipPlans = async (forceRefresh = false) => {
@@ -4297,5 +4418,23 @@ const handleLogout = () => {
   .vip-hero-panel {
     padding: 20px;
   }
+}
+
+/* Avatar upload & crop */
+.upload-avatar-section {
+  text-align: center;
+  padding: 8px 0;
+}
+
+.crop-container {
+  width: 100%;
+  height: 320px;
+  overflow: hidden;
+}
+
+.crop-image {
+  max-width: 100%;
+  max-height: 100%;
+  display: block;
 }
 </style>
