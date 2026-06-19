@@ -13,13 +13,21 @@ import org.springframework.transaction.annotation.Transactional;
 import sen.yuhuang.backend.dto.ChatMessageRequest;
 import sen.yuhuang.backend.dto.ChatMessageResponse;
 import sen.yuhuang.backend.entity.ChatMessage;
+import sen.yuhuang.backend.entity.ChatRoom;
+import sen.yuhuang.backend.entity.ChatRoomMember;
 import sen.yuhuang.backend.entity.User;
 import sen.yuhuang.backend.repository.ChatMessageRepository;
+import sen.yuhuang.backend.repository.ChatRoomMemberRepository;
+import sen.yuhuang.backend.repository.ChatRoomRepository;
 import sen.yuhuang.backend.repository.UserRepository;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
@@ -37,6 +45,8 @@ import java.util.stream.Collectors;
 public class ChatMessageService {
 
     private final ChatMessageRepository chatMessageRepository;
+    private final ChatRoomRepository chatRoomRepository;
+    private final ChatRoomMemberRepository chatRoomMemberRepository;
     private final UserRepository userRepository;
     private final StringRedisTemplate redisTemplate;
 
@@ -86,7 +96,9 @@ public class ChatMessageService {
         redisTemplate.opsForValue().increment(UNREAD_COUNT_KEY + request.getReceiverId(), 1);
 
         // 转换为响应DTO
-        return convertToResponse(savedMessage);
+        ChatMessageResponse resp = convertToResponse(savedMessage);
+        resp.setSenderAvatar(sender.getAvatar());
+        return resp;
     }
 
     /**
@@ -124,7 +136,9 @@ public class ChatMessageService {
         clearRoomMessageCache(request.getRoomId());
 
         // 转换为响应DTO
-        return convertToResponse(savedMessage);
+        ChatMessageResponse resp = convertToResponse(savedMessage);
+        resp.setSenderAvatar(sender.getAvatar());
+        return resp;
     }
 
     /**
@@ -140,7 +154,12 @@ public class ChatMessageService {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createTime"));
         Page<ChatMessage> messagePage = chatMessageRepository.findPrivateMessages(userId1, userId2, pageable);
 
-        return messagePage.map(this::convertToResponse);
+        return messagePage.map(msg -> {
+            ChatMessageResponse resp = convertToResponse(msg);
+            User sender = userRepository.findById(msg.getSenderId()).orElse(null);
+            if (sender != null) resp.setSenderAvatar(sender.getAvatar());
+            return resp;
+        });
     }
 
     /**
@@ -150,7 +169,20 @@ public class ChatMessageService {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createTime"));
         Page<ChatMessage> messagePage = chatMessageRepository.findRoomMessages(roomId, pageable);
 
-        return messagePage.map(this::convertToResponse);
+        // Batch-load sender avatars
+        Set<Long> senderIds = messagePage.getContent().stream()
+                .map(ChatMessage::getSenderId).collect(java.util.stream.Collectors.toSet());
+        Map<Long, String> avatarMap = new HashMap<>();
+        if (!senderIds.isEmpty()) {
+            userRepository.findByIds(new java.util.ArrayList<>(senderIds))
+                    .forEach(u -> avatarMap.put(u.getId(), u.getAvatar()));
+        }
+
+        return messagePage.map(msg -> {
+            ChatMessageResponse resp = convertToResponse(msg);
+            resp.setSenderAvatar(avatarMap.get(msg.getSenderId()));
+            return resp;
+        });
     }
 
     /**
@@ -214,6 +246,116 @@ public class ChatMessageService {
         if (!messageIds.isEmpty()) {
             markAsRead(userId, messageIds);
         }
+    }
+
+    /**
+     * 获取所有公开聊天室
+     */
+    public List<ChatRoom> getPublicRooms() {
+        return chatRoomRepository.findByRoomTypeAndIsActive("PUBLIC", true);
+    }
+
+    /**
+     * 获取用户加入的房间列表
+     */
+    public List<ChatRoom> getUserRooms(Long userId) {
+        List<ChatRoomMember> memberships = chatRoomMemberRepository.findByUserId(userId);
+        List<Long> roomIds = memberships.stream()
+                .map(ChatRoomMember::getRoomId)
+                .collect(Collectors.toList());
+        if (roomIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return chatRoomRepository.findAllById(roomIds);
+    }
+
+    /**
+     * 加入聊天室
+     */
+    @Transactional
+    public void joinRoom(Long userId, Long roomId) {
+        // 检查是否已在房间中
+        if (chatRoomMemberRepository.findByRoomIdAndUserId(roomId, userId).isPresent()) {
+            return; // 已在房间中，忽略
+        }
+
+        ChatRoomMember member = new ChatRoomMember();
+        member.setRoomId(roomId);
+        member.setUserId(userId);
+        member.setRole("MEMBER");
+        member.setJoinTime(LocalDateTime.now());
+        chatRoomMemberRepository.save(member);
+
+        // 更新房间成员数
+        ChatRoom room = chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new RuntimeException("房间不存在"));
+        room.setCurrentMembers(room.getCurrentMembers() + 1);
+        chatRoomRepository.save(room);
+    }
+
+    /**
+     * 退出聊天室
+     */
+    @Transactional
+    public void leaveRoom(Long userId, Long roomId) {
+        chatRoomMemberRepository.deleteByRoomIdAndUserId(roomId, userId);
+
+        // 更新房间成员数
+        ChatRoom room = chatRoomRepository.findById(roomId).orElse(null);
+        if (room != null && room.getCurrentMembers() > 0) {
+            room.setCurrentMembers(room.getCurrentMembers() - 1);
+            chatRoomRepository.save(room);
+        }
+    }
+
+    /**
+     * 获取联系人详细信息（含用户名、头像等）
+     */
+    public List<Map<String, Object>> getContactDetails(Long userId) {
+        List<Long> contactIds = chatMessageRepository.findRecentContacts(userId);
+        if (contactIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<User> users = userRepository.findByIds(contactIds);
+        // 保持与联系人相同的顺序
+        Map<Long, User> userMap = new HashMap<>();
+        users.forEach(u -> userMap.put(u.getId(), u));
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Long contactId : contactIds) {
+            User user = userMap.get(contactId);
+            if (user != null) {
+                Map<String, Object> info = new HashMap<>();
+                info.put("id", user.getId());
+                info.put("username", user.getUsername());
+                info.put("realName", user.getRealName());
+                info.put("avatar", user.getAvatar());
+                // 获取该联系人的未读消息数
+                long unread = chatMessageRepository.countUnreadBySender(userId, contactId);
+                info.put("unreadCount", unread);
+                result.add(info);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 搜索用户（排除自己）
+     */
+    public List<Map<String, Object>> searchUsers(Long currentUserId, String keyword) {
+        List<User> users = userRepository.searchByKeyword(keyword);
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (User user : users) {
+            if (user.getId().equals(currentUserId)) continue;
+            Map<String, Object> info = new HashMap<>();
+            info.put("id", user.getId());
+            info.put("username", user.getUsername());
+            info.put("realName", user.getRealName());
+            info.put("avatar", user.getAvatar());
+            result.add(info);
+        }
+        return result;
     }
 
     /**

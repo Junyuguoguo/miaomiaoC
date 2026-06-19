@@ -13,6 +13,7 @@ public class ChatMessageResponse {
     private Long id;
     private Long senderId;
     private String senderName;
+    private String senderAvatar;
     private Long receiverId;
     private Long roomId;
     private String messageType;
