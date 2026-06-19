@@ -196,7 +196,22 @@ const sendMessage = () => {
     connectWebSocket()
     return
   }
-  const messageData = { messageType: 'TEXT', content: inputMessage.value.trim() }
+  const content = inputMessage.value.trim()
+  const messageData = { messageType: 'TEXT', content }
+
+  // Optimistic render — show message immediately
+  const optimisticMsg = {
+    id: Date.now(),
+    senderId: currentUserId.value,
+    senderName: userStore.getUserName || '',
+    senderAvatar: userStore.getUserAvatar || '',
+    content,
+    createTime: new Date().toISOString(),
+    mine: true
+  }
+  messages.value.push(optimisticMsg)
+  nextTick(() => scrollToBottom())
+
   let sent = false
   if (chatType.value === 'private') {
     messageData.receiverId = Number(route.query.userId)
@@ -209,12 +224,23 @@ const sendMessage = () => {
     inputMessage.value = ''
     showPanel.value = false
   } else {
+    // Remove optimistic message on failure
+    messages.value.pop()
     ElMessage.error('消息发送失败')
   }
 }
 
 // Receive message
 const handleMessageReceived = (message) => {
+  // Dedup: skip if message with same id already exists
+  if (message.id && messages.value.some(m => m.id === message.id)) return
+  // Replace optimistic message if it matches
+  const last = messages.value[messages.value.length - 1]
+  if (last && last.mine && last.content === message.content && message.senderId === currentUserId.value) {
+    const idx = messages.value.length - 1
+    messages.value[idx] = message
+    return
+  }
   messages.value.push(message)
   nextTick(() => scrollToBottom())
   if (message.senderId !== currentUserId.value) {
