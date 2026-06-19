@@ -227,7 +227,7 @@ const newRoom = ref({ name: '', college: '' })
 let currentRoomSubId = null  // Track current WebSocket subscription ID
 
 const currentUserId = computed(() => userStore.getUserId)
-const isTeacher = computed(() => userStore.getUserRoleId >= 3)
+const isTeacher = computed(() => Number(userStore.getUserRoleId) >= 3)
 
 // Time helpers
 const formatTimeFull = (time) => {
