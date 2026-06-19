@@ -729,6 +729,40 @@
             </el-table-column>
           </el-table>
         </div>
+
+        <!-- 9. 个人中心 -->
+        <div v-if="currentMenu === '9'" class="page-content">
+          <div class="page-title">个人中心</div>
+          <div class="profile-card">
+            <div class="profile-avatar-section">
+              <el-avatar :size="80" class="profile-avatar">
+                <img v-if="profileForm.avatar" :src="profileForm.avatar" alt="头像" />
+                <el-icon v-else><User /></el-icon>
+              </el-avatar>
+              <el-button type="primary" plain size="small" @click="triggerTeacherAvatarUpload">
+                更换头像
+              </el-button>
+              <input ref="teacherAvatarInput" type="file" accept="image/jpeg,image/png,image/webp" style="display:none" @change="onTeacherAvatarChange" />
+            </div>
+            <el-form :model="profileForm" label-width="80px" class="profile-form">
+              <el-form-item label="用户名">
+                <el-input v-model="profileForm.username" disabled />
+              </el-form-item>
+              <el-form-item label="真实姓名">
+                <el-input v-model="profileForm.realName" placeholder="请输入真实姓名" />
+              </el-form-item>
+              <el-form-item label="手机号">
+                <el-input v-model="profileForm.phone" placeholder="请输入手机号" />
+              </el-form-item>
+              <el-form-item label="邮箱">
+                <el-input v-model="profileForm.email" placeholder="请输入邮箱" />
+              </el-form-item>
+              <el-form-item>
+                <el-button type="primary" :loading="profileSaving" @click="saveTeacherProfile">保存</el-button>
+              </el-form-item>
+            </el-form>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -871,6 +905,9 @@ import {
 } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from "@/stores/user"
+import { updateUserInfo, uploadAvatar } from '@/api/auth.js'
+import Cropper from 'cropperjs'
+import 'cropperjs/dist/cropper.css'
 import dayjs from 'dayjs'
 import {
   addQuestion,
@@ -1401,8 +1438,8 @@ const handleMenuSelect = async (index) => {
     router.push('/chat')
     return
   } else if (index === '9') {
-    router.push('/exam')
-    return
+    // 个人中心 — 加载用户信息
+    loadTeacherProfile()
   }
   currentMenu.value = index
   const titleMap = {
@@ -1417,6 +1454,110 @@ const handleMenuSelect = async (index) => {
     '9': '个人中心'
   }
   currentTitle.value = titleMap[index]
+}
+
+// === 个人中心 ===
+const profileForm = ref({ username: '', realName: '', phone: '', email: '', avatar: '' })
+const profileSaving = ref(false)
+const teacherAvatarInput = ref(null)
+
+const loadTeacherProfile = () => {
+  const info = userStore.$state.userInfo
+  profileForm.value = {
+    username: info.username || '',
+    realName: info.real_name || info.realName || '',
+    phone: info.phone || '',
+    email: info.email || '',
+    avatar: info.avatar || ''
+  }
+}
+
+const saveTeacherProfile = async () => {
+  profileSaving.value = true
+  try {
+    const userId = userStore.getUserId
+    const res = await updateUserInfo({
+      userId,
+      avatar: profileForm.value.avatar,
+      real_name: profileForm.value.realName,
+      phone: profileForm.value.phone,
+      email: profileForm.value.email,
+      school: userStore.$state.userInfo.school || '',
+      major: userStore.$state.userInfo.major || '',
+      score: userStore.$state.userInfo.score || ''
+    })
+    if (res && res.code === 200) {
+      userStore.updateUserInfo({
+        real_name: profileForm.value.realName,
+        phone: profileForm.value.phone,
+        email: profileForm.value.email,
+        avatar: profileForm.value.avatar
+      })
+      ElMessage.success('保存成功')
+    } else {
+      ElMessage.error(res?.message || '保存失败')
+    }
+  } catch {
+    ElMessage.error('保存失败')
+  } finally {
+    profileSaving.value = false
+  }
+}
+
+const triggerTeacherAvatarUpload = () => {
+  teacherAvatarInput.value?.click()
+}
+
+const onTeacherAvatarChange = (e) => {
+  const file = e.target.files[0]
+  if (!file) return
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    ElMessage.error('仅支持 JPG、PNG、WebP 格式')
+    return
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    ElMessage.error('文件大小不能超过 5MB')
+    return
+  }
+  const reader = new FileReader()
+  reader.onload = async (ev) => {
+    try {
+      const blob = await cropImageSimple(ev.target.result)
+      const avatarFile = new File([blob], 'avatar.jpg', { type: 'image/jpeg' })
+      const res = await uploadAvatar(avatarFile)
+      if (res && res.code === 200) {
+        profileForm.value.avatar = res.data
+        ElMessage.success('头像上传成功')
+      } else {
+        ElMessage.error(res?.message || '上传失败')
+      }
+    } catch {
+      ElMessage.error('头像上传失败')
+    }
+  }
+  reader.readAsDataURL(file)
+  e.target.value = ''
+}
+
+// Simple crop using canvas (no dialog needed for teacher)
+const cropImageSimple = (src) => {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      const size = Math.min(img.width, img.height)
+      const sx = (img.width - size) / 2
+      const sy = (img.height - size) / 2
+      const canvas = document.createElement('canvas')
+      canvas.width = 200
+      canvas.height = 200
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(img, sx, sy, size, size, 0, 0, 200, 200)
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('crop failed')), 'image/jpeg', 0.85)
+    }
+    img.onerror = reject
+    img.src = src
+  })
 }
 
 const resetVipForm = () => {
@@ -2625,5 +2766,30 @@ const handleRefresh = () => {
   .page-title-row {
     flex-direction: column;
   }
+}
+
+/* 个人中心 */
+.profile-card {
+  max-width: 500px;
+  background: #fff;
+  border-radius: 10px;
+  padding: 30px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.profile-avatar-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.profile-avatar {
+  border: 3px solid var(--app-primary-soft, #e8f0ff);
+}
+
+.profile-form {
+  max-width: 400px;
 }
 </style>
