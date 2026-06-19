@@ -6,8 +6,14 @@ import sen.yuhuang.backend.common.Result;
 import sen.yuhuang.backend.entity.User;
 import sen.yuhuang.backend.service.UserService;
 
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -126,6 +132,48 @@ public class UserController {
         String userId = request.get("userId");
         if (userId == null || userId.equals("")) return Result.error("加载用户数据用户ID不可为空!");
         return userService.getStatsData(userId);
+    }
+
+    @PostMapping("/uploadAvatar")
+    public Result uploadAvatar(@RequestParam("file") MultipartFile file,
+                               @RequestHeader(value = "X-Username", required = false) String username) {
+        if (file.isEmpty()) {
+            return Result.badRequest("请选择要上传的文件");
+        }
+
+        String contentType = file.getContentType();
+        Set<String> allowedTypes = Set.of("image/jpeg", "image/png", "image/webp");
+        if (contentType == null || !allowedTypes.contains(contentType)) {
+            return Result.badRequest("仅支持 JPG、PNG、WebP 格式");
+        }
+
+        if (file.getSize() > 5 * 1024 * 1024) {
+            return Result.badRequest("文件大小不能超过 5MB");
+        }
+
+        // Determine file extension
+        String ext = "jpg";
+        if ("image/png".equals(contentType)) ext = "png";
+        else if ("image/webp".equals(contentType)) ext = "webp";
+
+        // Generate unique filename
+        String filename = "user_" + (username != null ? username : "unknown") + "_" + UUID.randomUUID().toString().substring(0, 8) + "." + ext;
+
+        // Save file
+        String uploadDir = "uploads/avatars/";
+        File dir = new File(uploadDir);
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
+
+        try {
+            file.transferTo(new File(uploadDir + filename));
+        } catch (IOException e) {
+            return Result.error("文件上传失败: " + e.getMessage());
+        }
+
+        String avatarUrl = "/uploads/avatars/" + filename;
+        return Result.ok(avatarUrl);
     }
 
 }
