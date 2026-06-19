@@ -33,7 +33,13 @@
               :class="msg.senderId === currentUserId ? 'self' : ''"
               :style="{ animationDelay: Math.min(idx * 40, 400) + 'ms' }"
             >
-              <img class="msg-avatar" :src="fixAvatarUrl(msg.senderAvatar)" alt="avatar" />
+              <img
+                class="msg-avatar"
+                :class="{ clickable: msg.senderId !== currentUserId }"
+                :src="fixAvatarUrl(msg.senderAvatar)"
+                alt="avatar"
+                @click="msg.senderId !== currentUserId && goPrivateChat(msg.senderId, msg.senderName)"
+              />
               <div class="msg-body">
                 <span v-if="msg.senderId !== currentUserId" class="sender-name">
                   {{ msg.senderName || '匿名用户' }}
@@ -87,7 +93,7 @@
               v-for="user in searchResults"
               :key="user.id"
               class="contact-card"
-              @click="goPrivateChat(user.id)"
+              @click="goPrivateChat(user.id, user.username || user.realName)"
             >
               <img class="contact-avatar" :src="fixAvatarUrl(user.avatar)" alt="avatar" />
               <span class="contact-name">{{ user.username || user.realName }}</span>
@@ -107,7 +113,7 @@
             :key="contact.userId || contact.id"
             class="contact-card"
             :style="{ animationDelay: idx * 30 + 'ms' }"
-            @click="goPrivateChat(contact.userId || contact.id)"
+            @click="goPrivateChat(contact.userId || contact.id, contact.username || contact.realName)"
           >
             <img class="contact-avatar" :src="fixAvatarUrl(contact.avatar)" alt="avatar" />
             <div class="contact-info">
@@ -265,8 +271,10 @@ const onSearchInput = () => {
   }, 300)
 }
 
-const goPrivateChat = (userId) => {
-  router.push({ path: '/chat/private', query: { userId } })
+const goPrivateChat = (userId, userName) => {
+  const query = { userId }
+  if (userName) query.userName = userName
+  router.push({ path: '/chat/private', query })
 }
 
 const goBack = () => {
@@ -479,6 +487,16 @@ onUnmounted(() => {
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
+}
+
+.msg-avatar.clickable {
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s;
+}
+
+.msg-avatar.clickable:hover {
+  opacity: 0.8;
+  transform: scale(1.08);
 }
 
 .msg-body {
