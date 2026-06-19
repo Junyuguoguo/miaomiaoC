@@ -33,7 +33,7 @@
               :class="msg.senderId === currentUserId ? 'self' : ''"
               :style="{ animationDelay: Math.min(idx * 40, 400) + 'ms' }"
             >
-              <img class="msg-avatar" :src="msg.senderAvatar || defaultAvatar" alt="avatar" />
+              <img class="msg-avatar" :src="fixAvatarUrl(msg.senderAvatar)" alt="avatar" />
               <div class="msg-body">
                 <span v-if="msg.senderId !== currentUserId" class="sender-name">{{ msg.senderName || '匿名用户' }}</span>
                 <div class="bubble" :class="msg.senderId === currentUserId ? 'bubble-self' : 'bubble-peer'">
@@ -86,7 +86,7 @@
               class="contact-card"
               @click="goPrivateChat(user.id)"
             >
-              <img class="contact-avatar" :src="user.avatar || defaultAvatar" alt="avatar" />
+              <img class="contact-avatar" :src="fixAvatarUrl(user.avatar)" alt="avatar" />
               <span class="contact-name">{{ user.username || user.realName }}</span>
             </div>
           </div>
@@ -106,7 +106,7 @@
             :style="{ animationDelay: idx * 30 + 'ms' }"
             @click="goPrivateChat(contact.userId || contact.id)"
           >
-            <img class="contact-avatar" :src="contact.avatar || defaultAvatar" alt="avatar" />
+            <img class="contact-avatar" :src="fixAvatarUrl(contact.avatar)" alt="avatar" />
             <div class="contact-info">
               <span class="contact-name">{{ contact.username || contact.realName }}</span>
             </div>
@@ -133,6 +133,12 @@ const router = useRouter()
 const userStore = useUserStore()
 
 const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
+
+const fixAvatarUrl = (url) => {
+  if (!url) return defaultAvatar
+  if (url.startsWith('/uploads/')) return '/api/auth/avatar/' + url.split('/').pop()
+  return url
+}
 
 // State
 const messages = ref([])

@@ -30,7 +30,8 @@
         >
           <div class="message-avatar">
             <el-avatar :size="42" class="avatar-img" :class="msg.senderId === currentUserId ? 'avatar-self' : 'avatar-peer'">
-              {{ msg.senderName?.charAt(0) || 'U' }}
+              <img v-if="msg.senderAvatar" :src="fixAvatarUrl(msg.senderAvatar)" alt="avatar" />
+              <span v-else>{{ msg.senderName?.charAt(0) || 'U' }}</span>
             </el-avatar>
           </div>
           <div class="message-body">
@@ -112,6 +113,12 @@ const currentPage = ref(0)
 const messageListRef = ref(null)
 const connectionStatus = ref(false)
 const showPanel = ref(false)
+
+const fixAvatarUrl = (url) => {
+  if (!url) return ''
+  if (url.startsWith('/uploads/')) return '/api/auth/avatar/' + url.split('/').pop()
+  return url
+}
 
 // Computed
 const currentUserId = computed(() => userStore.getUserId)
