@@ -10,7 +10,7 @@
       <div class="user-info">
         <el-avatar :size="60" class="user-avatar">
           <!-- 如果有头像就显示图片，否则显示默认图标 -->
-          <img v-if="userInfo.avatar" :src="userInfo.avatar" alt="头像" />
+          <img v-if="userInfo.avatar" :src="fixAvatarUrl(userInfo.avatar)" alt="头像" />
           <el-icon v-else><User /></el-icon>
         </el-avatar>
         <div class="user-name">{{ studentDisplayName }}</div>
@@ -105,7 +105,7 @@
               <div class="avatar-section">
                 <el-avatar :size="60" class="user-avatar">
                   <!-- 如果有头像就显示图片，否则显示默认图标 -->
-                  <img v-if="userInfo.avatar" :src="userInfo.avatar" alt="头像" />
+                  <img v-if="userInfo.avatar" :src="fixAvatarUrl(userInfo.avatar)" alt="头像" />
                   <el-icon v-else><User /></el-icon>
                 </el-avatar>
               </div>
@@ -239,7 +239,7 @@
             <!-- 当前头像预览 -->
             <div class="avatar-preview" @click="showAvatarSelector = true">
               <el-avatar :size="100" class="preview-avatar">
-                <img v-if="selectedAvatar" :src="selectedAvatar" alt="头像" />
+                <img v-if="selectedAvatar" :src="fixAvatarUrl(selectedAvatar)" alt="头像" />
                 <el-icon v-else><User /></el-icon>
               </el-avatar>
               <div class="avatar-tip">点击选择头像</div>
@@ -1128,6 +1128,13 @@ const confirmSelectAvatar = (avatarUrl) => {
 }
 // 当前选中的头像
 const selectedAvatar = ref('')
+
+const fixAvatarUrl = (url) => {
+  if (!url) return ''
+  if (url.startsWith('/uploads/')) return '/api/auth/avatar/' + url.split('/').pop()
+  return url
+}
+
 // 选择头像
 const selectAvatar = (avatarUrl) => {
   selectedAvatar.value = avatarUrl
@@ -1296,7 +1303,7 @@ const fillEditForm = () => {
   editForm.email = userInfo.value.email || ''
 
   // 设置当前选中的头像（如果有就显示，没有就为空）
-  selectedAvatar.value = userInfo.value.avatar || ''
+  selectedAvatar.value = fixAvatarUrl(userInfo.value.avatar) || ''
 }
 
 const handleEditInfo = () => {

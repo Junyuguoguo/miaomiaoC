@@ -1461,6 +1461,12 @@ const profileForm = ref({ username: '', realName: '', phone: '', email: '', avat
 const profileSaving = ref(false)
 const teacherAvatarInput = ref(null)
 
+const fixAvatarUrl = (url) => {
+  if (!url) return ''
+  if (url.startsWith('/uploads/')) return '/api/auth/avatar/' + url.split('/').pop()
+  return url
+}
+
 const loadTeacherProfile = () => {
   const info = userStore.$state.userInfo
   profileForm.value = {
@@ -1468,7 +1474,7 @@ const loadTeacherProfile = () => {
     realName: info.real_name || info.realName || '',
     phone: info.phone || '',
     email: info.email || '',
-    avatar: info.avatar || ''
+    avatar: fixAvatarUrl(info.avatar)
   }
 }
 
