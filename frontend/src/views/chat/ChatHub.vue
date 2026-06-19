@@ -302,7 +302,7 @@ const handleCreateRoom = async () => {
     return
   }
   try {
-    const payload = { roomName: name }
+    const payload = { name: name }
     if (newRoom.value.college) payload.college = newRoom.value.college
     const res = await createRoom(payload)
     if (res && res.code === 200) {
