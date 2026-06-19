@@ -204,6 +204,12 @@ const loadContacts = async () => {
 // Handle incoming message
 const handleMessageReceived = (msg) => {
   if (msg.id && messages.value.some(m => m.id === msg.id)) return
+  // Replace optimistic message if it matches
+  const last = messages.value[messages.value.length - 1]
+  if (last && last.senderId === currentUserId.value && last.content === msg.content && msg.senderId === currentUserId.value) {
+    messages.value[messages.value.length - 1] = msg
+    return
+  }
   messages.value.push(msg)
   scrollToBottom()
 }
@@ -236,6 +242,21 @@ const sendMessage = () => {
     ElMessage.warning('聊天室未就绪')
     return
   }
+
+  // Optimistic render
+  const optimisticMsg = {
+    id: Date.now(),
+    senderId: currentUserId.value,
+    senderName: userStore.getUserName || '',
+    senderAvatar: userStore.getUserAvatar || '',
+    senderRole: userStore.getUserRoleId,
+    senderCollege: userStore.getUserCollege || '',
+    content,
+    createTime: new Date().toISOString()
+  }
+  messages.value.push(optimisticMsg)
+  scrollToBottom()
+
   const sent = chatWebSocket.sendRoomMessage({
     roomId: publicRoomId.value,
     messageType: 'TEXT',
@@ -244,6 +265,7 @@ const sendMessage = () => {
   if (sent) {
     inputMessage.value = ''
   } else {
+    messages.value.pop()
     ElMessage.warning('发送失败，请检查连接状态')
   }
 }
