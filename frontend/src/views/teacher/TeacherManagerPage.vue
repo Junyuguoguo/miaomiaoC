@@ -758,6 +758,9 @@
               <el-form-item label="邮箱">
                 <el-input v-model="profileForm.email" placeholder="请输入邮箱" />
               </el-form-item>
+              <el-form-item label="所属学院">
+                <el-input v-model="profileForm.college" placeholder="请输入所属学院" />
+              </el-form-item>
               <el-form-item>
                 <el-button type="primary" :loading="profileSaving" @click="saveTeacherProfile">保存</el-button>
               </el-form-item>
@@ -1458,7 +1461,7 @@ const handleMenuSelect = async (index) => {
 }
 
 // === 个人中心 ===
-const profileForm = ref({ username: '', realName: '', phone: '', email: '', avatar: '' })
+const profileForm = ref({ username: '', realName: '', phone: '', email: '', avatar: '', college: '' })
 const profileSaving = ref(false)
 const teacherAvatarInput = ref(null)
 
@@ -1475,7 +1478,8 @@ const loadTeacherProfile = () => {
     realName: info.real_name || info.realName || '',
     phone: info.phone || '',
     email: info.email || '',
-    avatar: fixAvatarUrl(info.avatar)
+    avatar: fixAvatarUrl(info.avatar),
+    college: info.college || ''
   }
 }
 
@@ -1489,6 +1493,7 @@ const saveTeacherProfile = async () => {
       real_name: profileForm.value.realName,
       phone: profileForm.value.phone,
       email: profileForm.value.email,
+      college: profileForm.value.college,
       school: userStore.$state.userInfo.school || '',
       major: userStore.$state.userInfo.major || '',
       score: userStore.$state.userInfo.score || ''
@@ -1498,7 +1503,8 @@ const saveTeacherProfile = async () => {
         real_name: profileForm.value.realName,
         phone: profileForm.value.phone,
         email: profileForm.value.email,
-        avatar: profileForm.value.avatar
+        avatar: profileForm.value.avatar,
+        college: profileForm.value.college
       })
       ElMessage.success('保存成功')
     } else {
