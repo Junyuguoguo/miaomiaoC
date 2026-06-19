@@ -391,13 +391,15 @@ public class ChatMessageService {
      * 创建聊天室
      */
     @Transactional
-    public ChatRoom createRoom(String name, String description, String college) {
+    public ChatRoom createRoom(String name, String description, String college, Long creatorId) {
         ChatRoom room = new ChatRoom();
         room.setRoomName(name);
         room.setDescription(description);
         room.setCollege(college);
+        room.setCreatorId(creatorId);
         room.setRoomType("PUBLIC");
         room.setCurrentMembers(0);
+        room.setIsActive(true);
         return chatRoomRepository.save(room);
     }
 

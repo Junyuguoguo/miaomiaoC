@@ -139,7 +139,7 @@ public class ChatController {
         if (name == null || name.trim().isEmpty()) {
             return Result.badRequest("房间名不能为空");
         }
-        return Result.ok(chatMessageService.createRoom(name, description, college));
+        return Result.ok(chatMessageService.createRoom(name, description, college, currentUser.getId()));
     }
 
     @DeleteMapping("/rooms/{roomId}")
