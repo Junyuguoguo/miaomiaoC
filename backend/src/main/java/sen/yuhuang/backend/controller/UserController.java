@@ -125,12 +125,13 @@ public class UserController {
         String realName = request.get("real_name");
         String school = request.get("school");
         String score = request.get("score");
+        String college = request.get("college");
         System.out.println("ssssss,"+userId+"s"+avatar+"S"+email+"S"+major+"s"+phone+"S"+realName+"S"+school+"S"+score);
 
         if (email == null || major == null || phone == null
                 || realName == null || school == null || score == null || userId == null)
             return Result.badRequest("信息不可以存在空的!!!");
-        return userService.updateUserInfo(avatar,email,major,phone,realName,school,score,userId);
+        return userService.updateUserInfo(avatar,email,major,phone,realName,school,score,college,userId);
     }
 
     @PostMapping("/getStatsData")

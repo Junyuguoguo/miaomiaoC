@@ -98,6 +98,8 @@ public class ChatMessageService {
         // 转换为响应DTO
         ChatMessageResponse resp = convertToResponse(savedMessage);
         resp.setSenderAvatar(sender.getAvatar());
+        resp.setSenderCollege(sender.getCollege());
+        resp.setSenderRole(sender.getRoleId());
         return resp;
     }
 
@@ -138,6 +140,8 @@ public class ChatMessageService {
         // 转换为响应DTO
         ChatMessageResponse resp = convertToResponse(savedMessage);
         resp.setSenderAvatar(sender.getAvatar());
+        resp.setSenderCollege(sender.getCollege());
+        resp.setSenderRole(sender.getRoleId());
         return resp;
     }
 
@@ -157,7 +161,11 @@ public class ChatMessageService {
         return messagePage.map(msg -> {
             ChatMessageResponse resp = convertToResponse(msg);
             User sender = userRepository.findById(msg.getSenderId()).orElse(null);
-            if (sender != null) resp.setSenderAvatar(sender.getAvatar());
+            if (sender != null) {
+                resp.setSenderAvatar(sender.getAvatar());
+                resp.setSenderCollege(sender.getCollege());
+                resp.setSenderRole(sender.getRoleId());
+            }
             return resp;
         });
     }
@@ -169,18 +177,23 @@ public class ChatMessageService {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createTime"));
         Page<ChatMessage> messagePage = chatMessageRepository.findRoomMessages(roomId, pageable);
 
-        // Batch-load sender avatars
+        // Batch-load sender info
         Set<Long> senderIds = messagePage.getContent().stream()
                 .map(ChatMessage::getSenderId).collect(java.util.stream.Collectors.toSet());
-        Map<Long, String> avatarMap = new HashMap<>();
+        Map<Long, User> senderMap = new HashMap<>();
         if (!senderIds.isEmpty()) {
             userRepository.findByIds(new java.util.ArrayList<>(senderIds))
-                    .forEach(u -> avatarMap.put(u.getId(), u.getAvatar()));
+                    .forEach(u -> senderMap.put(u.getId(), u));
         }
 
         return messagePage.map(msg -> {
             ChatMessageResponse resp = convertToResponse(msg);
-            resp.setSenderAvatar(avatarMap.get(msg.getSenderId()));
+            User sender = senderMap.get(msg.getSenderId());
+            if (sender != null) {
+                resp.setSenderAvatar(sender.getAvatar());
+                resp.setSenderCollege(sender.getCollege());
+                resp.setSenderRole(sender.getRoleId());
+            }
             return resp;
         });
     }

@@ -14,6 +14,8 @@ public class ChatMessageResponse {
     private Long senderId;
     private String senderName;
     private String senderAvatar;
+    private String senderCollege;
+    private Long senderRole;
     private Long receiverId;
     private Long roomId;
     private String messageType;
