@@ -99,7 +99,7 @@ import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import chatWebSocket from '@/utils/chat-websocket'
-import { getPrivateMessages, getRoomMessages, markAsRead } from '@/api/chat'
+import { getPrivateMessages, getRoomMessages, markAsRead, markAllAsRead } from '@/api/chat'
 import dayjs from 'dayjs'
 
 const route = useRoute()
@@ -286,6 +286,9 @@ const connectWebSocket = async () => {
 
 onMounted(async () => {
   await loadMessages(0)
+  if (chatType.value === 'private' && route.query.userId) {
+    markAllAsRead(Number(route.query.userId)).catch(console.error)
+  }
   await connectWebSocket()
 })
 

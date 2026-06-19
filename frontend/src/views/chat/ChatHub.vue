@@ -130,8 +130,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, onUnmounted, nextTick, computed, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { getRoomMessages, getPublicRooms, getContactDetails, searchUsers, joinRoom } from '@/api/chat'
@@ -139,6 +139,7 @@ import chatWebSocket from '@/utils/chat-websocket'
 import dayjs from 'dayjs'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 
 const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
@@ -307,6 +308,12 @@ const goBack = () => {
     router.push('/exam')
   }
 }
+
+watch(() => route.path, (newPath) => {
+  if (newPath === '/chat') {
+    loadContacts()
+  }
+})
 
 // Init
 onMounted(async () => {
