@@ -75,7 +75,7 @@ export default defineConfig(({ mode }) => {
         },
 
         optimizeDeps: {
-            include: ['@codemirror/state', '@codemirror/view', '@codemirror/lang-cpp'],
+            include: ['@codemirror/state', '@codemirror/view', '@codemirror/lang-cpp', 'sockjs-client', 'stompjs'],
             force: true
         },
 
@@ -87,6 +87,10 @@ export default defineConfig(({ mode }) => {
                     target: env.VITE_API_BASE_URL || 'http://localhost:8080',
                     changeOrigin: true
                     // 移除 rewrite 规则，保持 /api 前缀
+                },
+                '/uploads': {
+                    target: env.VITE_API_BASE_URL || 'http://localhost:8080',
+                    changeOrigin: true
                 }
             }
         },
