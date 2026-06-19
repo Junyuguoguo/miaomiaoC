@@ -19,6 +19,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -183,13 +184,16 @@ public class UserController {
         return Result.ok(avatarUrl);
     }
 
-    @GetMapping(value = "/avatar/{filename}", produces = {MediaType.IMAGE_JPEG_VALUE, MediaType.IMAGE_PNG_VALUE, MediaType.IMAGE_WEBP_VALUE})
-    public byte[] getAvatar(@PathVariable String filename) throws IOException {
+    @GetMapping("/avatar/{filename}")
+    public ResponseEntity<byte[]> getAvatar(@PathVariable String filename) throws IOException {
         Path filePath = Paths.get(System.getProperty("user.dir"), "uploads", "avatars", filename);
-        if (Files.exists(filePath)) {
-            return Files.readAllBytes(filePath);
+        if (!Files.exists(filePath)) {
+            return ResponseEntity.notFound().build();
         }
-        return new byte[0];
+        byte[] data = Files.readAllBytes(filePath);
+        String contentType = Files.probeContentType(filePath);
+        if (contentType == null) contentType = "application/octet-stream";
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType(contentType)).body(data);
     }
 
 }
