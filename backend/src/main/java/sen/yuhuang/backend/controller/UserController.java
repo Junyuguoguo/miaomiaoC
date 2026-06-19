@@ -55,11 +55,12 @@ public class UserController {
         String username = request.get("username");
         String password = request.get("password");
         String role = request.get("role");
+        String college = request.get("college");
 
         if (username == null || username.trim().isEmpty()) return Result.badRequest("用户名不能为空");
         if (password == null || password.trim().isEmpty()) return Result.badRequest("密码不能为空");
 
-        return userService.register(username,password,role);
+        return userService.register(username,password,role,college);
     }
 
     @PostMapping("/sendEmail")

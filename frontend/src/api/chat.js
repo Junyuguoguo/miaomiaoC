@@ -23,11 +23,21 @@ export function getRoomMessages(roomId, page = 0, size = 20) {
 }
 
 /**
- * 获取最近联系人列表
+ * 获取最近联系人列表（仅ID）
  */
 export function getRecentContacts() {
     return request({
         url: '/api/chat/contacts',
+        method: 'get'
+    })
+}
+
+/**
+ * 获取联系人详细信息（含用户名、头像、未读数）
+ */
+export function getContactDetails() {
+    return request({
+        url: '/api/chat/contacts/detail',
         method: 'get'
     })
 }
@@ -61,4 +71,76 @@ export function markAllAsRead(contactId) {
         url: `/api/chat/read-all/${contactId}`,
         method: 'post'
     })
+}
+
+/**
+ * 获取公开聊天室列表
+ */
+export function getPublicRooms() {
+    return request({
+        url: '/api/chat/rooms',
+        method: 'get'
+    })
+}
+
+/**
+ * 获取我加入的房间列表
+ */
+export function getMyRooms() {
+    return request({
+        url: '/api/chat/rooms/my',
+        method: 'get'
+    })
+}
+
+/**
+ * 加入聊天室
+ */
+export function joinRoom(roomId) {
+    return request({
+        url: `/api/chat/rooms/${roomId}/join`,
+        method: 'post'
+    })
+}
+
+/**
+ * 退出聊天室
+ */
+export function leaveRoom(roomId) {
+    return request({
+        url: `/api/chat/rooms/${roomId}/leave`,
+        method: 'post'
+    })
+}
+
+/**
+ * 搜索用户
+ */
+export function searchUsers(keyword) {
+    return request({
+        url: '/api/chat/users/search',
+        method: 'get',
+        params: { keyword }
+    })
+}
+
+/**
+ * 获取聊天室列表
+ */
+export function getRooms() {
+    return request({ url: '/api/chat/rooms', method: 'get' })
+}
+
+/**
+ * 创建聊天室
+ */
+export function createRoom(data) {
+    return request({ url: '/api/chat/rooms', method: 'post', data })
+}
+
+/**
+ * 删除聊天室
+ */
+export function deleteRoom(roomId) {
+    return request({ url: `/api/chat/rooms/${roomId}`, method: 'delete' })
 }

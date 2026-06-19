@@ -65,6 +65,24 @@
           </el-input>
         </el-form-item>
 
+        <!-- 学院选择 -->
+        <el-form-item prop="college">
+          <el-select
+              v-model="registerForm.college"
+              placeholder="请选择学院"
+              size="large"
+              class="custom-input"
+              style="width: 100%"
+          >
+            <el-option
+                v-for="item in collegeOptions"
+                :key="item"
+                :label="item"
+                :value="item"
+            />
+          </el-select>
+        </el-form-item>
+
         <!-- 学生角色标识（仅展示，不可选择） -->
         <el-form-item class="role-item">
           <div class="role-display">
@@ -125,11 +143,24 @@ onMounted(async () => {
 })
 
 
+// 学院选项
+const collegeOptions = [
+  '计算机学院',
+  '机械学院',
+  '电子信息学院',
+  '经济管理学院',
+  '外国语学院',
+  '理学院',
+  '人文社科学院',
+  '自动化学院'
+]
+
 // 注册表单数据（固定为学生角色）
 const registerForm = reactive({
   username: '',
   password: '',
   confirmPassword: '',
+  college: '',
   role: 'student' // 固定为学生，不可修改
 })
 
@@ -173,6 +204,9 @@ const registerRules = {
     { min: 6, max: 20, message: '长度在 6 到 20 个字符', trigger: 'blur' },
     { pattern: /^(?=.*[a-zA-Z])(?=.*\d)/, message: '必须包含字母和数字', trigger: 'blur' }
   ],
+  college: [
+    { required: true, message: '请选择学院', trigger: 'change' }
+  ],
   confirmPassword: [
     { required: true, message: '请确认密码', trigger: 'blur' },
     {
@@ -200,7 +234,8 @@ const handleRegister = async () => {
         const response = await register({
           username: registerForm.username,
           password: registerForm.password,
-          role: registerForm.role // 固定传student
+          role: registerForm.role, // 固定传student
+          college: registerForm.college
         })
 
         if(response.code === 200){

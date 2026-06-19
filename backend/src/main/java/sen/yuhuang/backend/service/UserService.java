@@ -78,7 +78,7 @@ public class UserService {
         }
     }
 
-    public Result register(String username, String password, String role) {
+    public Result register(String username, String password, String role, String college) {
         // 1.当前userName没有被使用
         User user = userRepository.findUserByUsername(username);
         if (user != null) return Result.badRequest("用户名被占用");
@@ -88,6 +88,7 @@ public class UserService {
                 .username(username)
                 .password(password)
                 .avatar("/avatars/17.jpg")
+                .college(college)
                 .roleId(1L).build();
 
         User save = userRepository.save(newUser);
