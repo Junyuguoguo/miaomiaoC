@@ -88,7 +88,6 @@ export function uploadAvatar(file) {
     return request({
         url: '/api/auth/uploadAvatar',
         method: 'post',
-        data: formData,
-        headers: { 'Content-Type': undefined }
+        data: formData
     })
 }
