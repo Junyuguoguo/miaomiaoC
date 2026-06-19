@@ -68,6 +68,12 @@ public class ChatRoom {
     private LocalDateTime createTime;
 
     /**
+     * 学院归属（NULL表示全校可见）
+     */
+    @Column(name = "college", length = 100)
+    private String college;
+
+    /**
      * 更新时间
      */
     @Column(name = "update_time")

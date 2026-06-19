@@ -374,6 +374,42 @@ public class ChatMessageService {
     }
 
     /**
+     * 获取可见聊天室列表（根据用户角色和学院过滤）
+     */
+    public List<ChatRoom> getVisibleRooms(Long userId) {
+        User user = userRepository.findById(userId).orElse(null);
+        if (user == null) return List.of();
+        // 管理员可以看到所有房间
+        if (user.getRoleId() != null && user.getRoleId() >= 3) {
+            return chatRoomRepository.findAllRooms();
+        }
+        // 普通用户只能看到全校房间和本学院房间
+        return chatRoomRepository.findVisibleRooms(user.getCollege());
+    }
+
+    /**
+     * 创建聊天室
+     */
+    @Transactional
+    public ChatRoom createRoom(String name, String description, String college) {
+        ChatRoom room = new ChatRoom();
+        room.setRoomName(name);
+        room.setDescription(description);
+        room.setCollege(college);
+        room.setRoomType("PUBLIC");
+        room.setCurrentMembers(0);
+        return chatRoomRepository.save(room);
+    }
+
+    /**
+     * 删除聊天室
+     */
+    @Transactional
+    public void deleteRoom(Long roomId) {
+        chatRoomRepository.deleteById(roomId);
+    }
+
+    /**
      * 清除单聊消息缓存
      */
     private void clearMessageCache(Long userId1, Long userId2) {
