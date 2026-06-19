@@ -35,7 +35,8 @@
             </el-avatar>
           </div>
           <div class="message-body">
-            <div class="bubble" :class="msg.senderId === currentUserId ? 'bubble-self' : 'bubble-peer'">
+            <div class="bubble" :class="[msg.senderId === currentUserId ? 'bubble-self' : 'bubble-peer', (msg.senderRole === 3 || msg.senderRole === 4) ? 'bubble-teacher' : '']">
+              <span v-if="(msg.senderRole === 3 || msg.senderRole === 4) && msg.senderCollege" class="teacher-tag">{{ msg.senderCollege }}</span>
               {{ msg.content }}
             </div>
           </div>
@@ -631,5 +632,23 @@ onUnmounted(() => {
 @keyframes fadeIn {
   from { opacity: 0; transform: scale(0.9); }
   to { opacity: 1; transform: scale(1); }
+}
+
+/* --- Teacher identity --- */
+.teacher-tag {
+  display: inline-block;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(212, 168, 67, 0.15);
+  color: #B8922E;
+  margin-right: 6px;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.bubble-teacher {
+  border: 2px solid #D4A843;
+  box-shadow: 0 2px 12px rgba(212, 168, 67, 0.2);
 }
 </style>

@@ -35,8 +35,11 @@
             >
               <img class="msg-avatar" :src="fixAvatarUrl(msg.senderAvatar)" alt="avatar" />
               <div class="msg-body">
-                <span v-if="msg.senderId !== currentUserId" class="sender-name">{{ msg.senderName || '匿名用户' }}</span>
-                <div class="bubble" :class="msg.senderId === currentUserId ? 'bubble-self' : 'bubble-peer'">
+                <span v-if="msg.senderId !== currentUserId" class="sender-name">
+                  {{ msg.senderName || '匿名用户' }}
+                  <span v-if="msg.senderRole === 3 || msg.senderRole === 4" class="teacher-badge">{{ msg.senderCollege || '教师' }}</span>
+                </span>
+                <div class="bubble" :class="[msg.senderId === currentUserId ? 'bubble-self' : 'bubble-peer', (msg.senderRole === 3 || msg.senderRole === 4) ? 'bubble-teacher' : '']">
                   {{ msg.content }}
                 </div>
               </div>
@@ -727,5 +730,23 @@ onUnmounted(() => {
   font-size: 11px;
   font-weight: 600;
   flex-shrink: 0;
+}
+
+/* --- Teacher identity --- */
+.teacher-badge {
+  display: inline-block;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #D4A843, #B8922E);
+  color: #fff;
+  margin-left: 6px;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.bubble-teacher {
+  border: 2px solid #D4A843 !important;
+  box-shadow: 0 2px 12px rgba(212, 168, 67, 0.2) !important;
 }
 </style>
