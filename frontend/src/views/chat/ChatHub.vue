@@ -267,7 +267,12 @@ const goPrivateChat = (userId) => {
 }
 
 const goBack = () => {
-  router.push('/exam')
+  const roleId = userStore.getUserRoleId
+  if (roleId === 3 || roleId === 4) {
+    router.push('/teacher')
+  } else {
+    router.push('/exam')
+  }
 }
 
 // Init
