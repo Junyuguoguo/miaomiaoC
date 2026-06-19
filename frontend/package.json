@@ -19,7 +19,7 @@
     "@codemirror/view": "^6.40.0",
     "@stomp/stompjs": "^7.3.0",
     "axios": "^1.13.6",
-    "cropperjs": "^2.1.1",
+    "cropperjs": "^1.6.2",
     "dayjs": "^1.11.20",
     "element-plus": "^2.13.5",
     "pinia": "^3.0.4",
