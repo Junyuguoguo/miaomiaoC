@@ -56,6 +56,10 @@
           <el-icon><User /></el-icon>
           <span>个人中心</span>
         </el-menu-item>
+        <el-menu-item index="10">
+          <el-icon><ChatLineSquare /></el-icon>
+          <span>聊天室管理</span>
+        </el-menu-item>
       </el-menu>
       <!-- 退出登录 -->
       <div class="logout-btn-wrap">
@@ -767,6 +771,30 @@
             </el-form>
           </div>
         </div>
+
+        <!-- 10. 聊天室管理 -->
+        <div v-if="currentMenu === '10'" class="page-content">
+          <div class="page-title">聊天室管理</div>
+          <div style="margin-bottom:15px;">
+            <el-button type="primary" @click="showCreateRoomDialog = true">创建聊天室</el-button>
+          </div>
+          <el-table :data="chatRoomList" border>
+            <el-table-column label="ID" prop="id" width="70" />
+            <el-table-column label="房间名称" prop="roomName" />
+            <el-table-column label="所属学院" width="150">
+              <template #default="{ row }">
+                <el-tag v-if="row.college" type="warning">{{ row.college }}</el-tag>
+                <el-tag v-else type="info">全校大厅</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="成员数" prop="currentMembers" width="100" align="center" />
+            <el-table-column label="操作" width="140" fixed="right">
+              <template #default="{ row }">
+                <el-button type="danger" link @click="handleDeleteRoom(row.id)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
       </div>
     </div>
 
@@ -895,6 +923,31 @@
         <el-button type="primary" @click="handleGenerateKeys">生成</el-button>
       </template>
     </el-dialog>
+
+    <!-- 创建聊天室弹窗 -->
+    <el-dialog v-model="showCreateRoomDialog" title="创建聊天室" width="400px">
+      <el-form :model="newRoomForm" label-width="80px">
+        <el-form-item label="房间名称">
+          <el-input v-model="newRoomForm.name" placeholder="如：计算机学院交流群" />
+        </el-form-item>
+        <el-form-item label="所属学院">
+          <el-select v-model="newRoomForm.college" placeholder="留空为全校大厅" clearable style="width:100%">
+            <el-option label="计算机学院" value="计算机学院" />
+            <el-option label="机械学院" value="机械学院" />
+            <el-option label="电子信息学院" value="电子信息学院" />
+            <el-option label="经济管理学院" value="经济管理学院" />
+            <el-option label="外国语学院" value="外国语学院" />
+            <el-option label="理学院" value="理学院" />
+            <el-option label="人文社科学院" value="人文社科学院" />
+            <el-option label="自动化学院" value="自动化学院" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showCreateRoomDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleCreateRoom">创建</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -905,7 +958,7 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   User, Document, Edit, Folder, Warning, DataAnalysis,
-  SwitchButton, Refresh, Medal, Plus, Key, CopyDocument
+  SwitchButton, Refresh, Medal, Plus, Key, CopyDocument, ChatLineSquare
 } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from "@/stores/user"
@@ -936,6 +989,7 @@ import {
   deleteVipKey
 } from "@/api/vip-key.js"
 import { getViolationRecords } from "@/api/exam.js"
+import { getRooms as getRoomsApi, createRoom as createRoomApi, deleteRoom as deleteRoomApi } from '@/api/chat'
 
 // 初始化路由和用户状态管理
 const router = useRouter()
@@ -1444,6 +1498,8 @@ const handleMenuSelect = async (index) => {
   } else if (index === '9') {
     // 个人中心 — 加载用户信息
     loadTeacherProfile()
+  } else if (index === '10') {
+    await loadChatRooms()
   }
   currentMenu.value = index
   const titleMap = {
@@ -1455,7 +1511,8 @@ const handleMenuSelect = async (index) => {
     '6': 'VIP设置',
     '7': 'VIP密钥管理',
     '8': '在线交流',
-    '9': '个人中心'
+    '9': '个人中心',
+    '10': '聊天室管理'
   }
   currentTitle.value = titleMap[index]
 }
@@ -1840,6 +1897,11 @@ const examList = ref([])
 const violationLoading = ref(false)
 const violationList = ref([])
 
+// 聊天室管理
+const chatRoomList = ref([])
+const showCreateRoomDialog = ref(false)
+const newRoomForm = ref({ name: '', college: '' })
+
 const loadViolationRecords = async (forceRefresh = false) => {
   if (violationList.value.length > 0 && !forceRefresh) return
   violationLoading.value = true
@@ -1871,6 +1933,35 @@ const violationStats = computed(() => {
     forceSubmitCount: violationList.value.filter(item => Number(item.count) > 3).length
   }
 })
+
+// 聊天室管理方法
+const loadChatRooms = async () => {
+  try {
+    const res = await getRoomsApi()
+    if (res && res.code === 200) chatRoomList.value = res.data || []
+  } catch { ElMessage.error('加载聊天室失败') }
+}
+
+const handleCreateRoom = async () => {
+  if (!newRoomForm.value.name.trim()) { ElMessage.warning('请输入房间名称'); return }
+  try {
+    const res = await createRoomApi({ name: newRoomForm.value.name, college: newRoomForm.value.college || null })
+    if (res && res.code === 200) {
+      ElMessage.success('创建成功')
+      showCreateRoomDialog.value = false
+      newRoomForm.value = { name: '', college: '' }
+      await loadChatRooms()
+    }
+  } catch { ElMessage.error('创建失败') }
+}
+
+const handleDeleteRoom = async (roomId) => {
+  try {
+    await ElMessageBox.confirm('确定删除该聊天室？', '提示', { type: 'warning' })
+    const res = await deleteRoomApi(roomId)
+    if (res && res.code === 200) { ElMessage.success('删除成功'); await loadChatRooms() }
+  } catch {}
+}
 
 // 自动同步 bankTitle (根据bankId)
 const syncBankTitle = (question) => {
@@ -2204,6 +2295,8 @@ const handleRefresh = () => {
     loadVipKeyList(true)
   } else if (currentMenu.value === '4') {
     loadViolationRecords(true)
+  } else if (currentMenu.value === '10') {
+    loadChatRooms()
   } else {
     // 刷新时重新加载所有核心数据
     Promise.all([loadQuestionList(true), loadBankList(true), loadExamList(true)])
