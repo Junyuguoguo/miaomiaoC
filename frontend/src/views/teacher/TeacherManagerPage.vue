@@ -8,9 +8,10 @@
       </div>
       <div class="user-info">
         <el-avatar :size="60" class="user-avatar">
-          <el-icon><User /></el-icon>
+          <img v-if="userStore.getUserAvatar" :src="fixAvatarUrl(userStore.getUserAvatar)" alt="头像" />
+          <el-icon v-else><User /></el-icon>
         </el-avatar>
-        <div class="user-name">教师账号</div>
+        <div class="user-name">{{ userStore.getUserName || '教师' }}</div>
         <div class="user-role">教师</div>
       </div>
       <!-- 导航菜单（复用可行的菜单选择逻辑） -->
