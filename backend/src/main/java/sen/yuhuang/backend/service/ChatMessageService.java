@@ -80,7 +80,8 @@ public class ChatMessageService {
         // 创建消息实体
         ChatMessage message = new ChatMessage();
         message.setSenderId(senderId);
-        message.setSenderName(sender.getUsername());
+        message.setSenderName(sender.getRealName() != null && !sender.getRealName().isEmpty()
+                ? sender.getRealName() : sender.getUsername());
         message.setReceiverId(request.getReceiverId());
         message.setMessageType(request.getMessageType());
         message.setContent(request.getContent());
@@ -125,7 +126,8 @@ public class ChatMessageService {
         // 创建消息实体
         ChatMessage message = new ChatMessage();
         message.setSenderId(senderId);
-        message.setSenderName(sender.getUsername());
+        message.setSenderName(sender.getRealName() != null && !sender.getRealName().isEmpty()
+                ? sender.getRealName() : sender.getUsername());
         message.setRoomId(request.getRoomId());
         message.setMessageType(request.getMessageType());
         message.setContent(request.getContent());

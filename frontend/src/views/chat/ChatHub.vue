@@ -529,10 +529,11 @@ onUnmounted(() => {
 }
 
 .bubble-self {
-  background: linear-gradient(135deg, var(--app-primary), var(--app-primary-dark));
-  color: #fff;
+  background: var(--app-primary-soft, #e8f0ff);
+  color: var(--app-text, #102033);
   border-radius: 16px 16px 4px 16px;
-  box-shadow: 0 2px 12px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 1px 4px rgba(37, 99, 235, 0.08);
+  border: 1px solid rgba(37, 99, 235, 0.12);
 }
 
 .bubble-self::after {
@@ -544,7 +545,7 @@ onUnmounted(() => {
   height: 0;
   border-style: solid;
   border-width: 0 0 8px 8px;
-  border-color: transparent transparent transparent var(--app-primary-dark);
+  border-color: transparent transparent transparent #dce8f8;
 }
 
 /* --- Input bar --- */
@@ -589,7 +590,7 @@ onUnmounted(() => {
   padding: 0 20px;
   border: none;
   border-radius: 20px;
-  background: linear-gradient(135deg, var(--app-primary), var(--app-primary-dark));
+  background: var(--app-primary, #2563eb);
   color: #fff;
   font-size: 14px;
   font-weight: 600;
