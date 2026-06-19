@@ -10,6 +10,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -159,15 +162,17 @@ public class UserController {
         // Generate unique filename
         String filename = "user_" + (username != null ? username : "unknown") + "_" + UUID.randomUUID().toString().substring(0, 8) + "." + ext;
 
-        // Save file — use absolute path so transferTo doesn't resolve into Tomcat temp dir
-        String uploadDir = System.getProperty("user.dir") + "/uploads/avatars/";
-        File dir = new File(uploadDir);
-        if (!dir.exists()) {
-            dir.mkdirs();
+        // Save file using Files.write to avoid Tomcat temp dir issues
+        Path uploadDir = Paths.get(System.getProperty("user.dir"), "uploads", "avatars");
+        try {
+            Files.createDirectories(uploadDir);
+        } catch (IOException e) {
+            return Result.error("创建上传目录失败: " + e.getMessage());
         }
 
+        Path target = uploadDir.resolve(filename);
         try {
-            file.transferTo(new File(uploadDir + filename));
+            Files.write(target, file.getBytes());
         } catch (IOException e) {
             return Result.error("文件上传失败: " + e.getMessage());
         }
