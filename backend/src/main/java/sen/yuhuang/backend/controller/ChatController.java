@@ -8,6 +8,7 @@ import sen.yuhuang.backend.common.Result;
 import sen.yuhuang.backend.dto.ChatMessageResponse;
 import sen.yuhuang.backend.entity.ChatRoom;
 import sen.yuhuang.backend.entity.User;
+import sen.yuhuang.backend.entity.UserRoomSetting;
 import sen.yuhuang.backend.repository.UserRepository;
 import sen.yuhuang.backend.service.ChatMessageService;
 
@@ -150,5 +151,48 @@ public class ChatController {
         }
         chatMessageService.deleteRoom(roomId);
         return Result.ok("删除成功");
+    }
+
+    /**
+     * 根据群号加入房间
+     */
+    @GetMapping("/rooms/join/{groupNumber}")
+    public Result joinByGroupNumber(HttpServletRequest request, @PathVariable String groupNumber) {
+        User currentUser = getCurrentUser(request);
+        ChatRoom room = chatMessageService.findByGroupNumber(groupNumber);
+        if (room == null) {
+            return Result.badRequest("群号不存在");
+        }
+        return Result.ok(room);
+    }
+
+    /**
+     * 切换房间置顶状态
+     */
+    @PostMapping("/rooms/{roomId}/pin")
+    public Result togglePin(HttpServletRequest request, @PathVariable Long roomId) {
+        User currentUser = getCurrentUser(request);
+        UserRoomSetting setting = chatMessageService.togglePin(currentUser.getId(), roomId);
+        return Result.ok(setting);
+    }
+
+    /**
+     * 切换房间免打扰状态
+     */
+    @PostMapping("/rooms/{roomId}/mute")
+    public Result toggleMute(HttpServletRequest request, @PathVariable Long roomId) {
+        User currentUser = getCurrentUser(request);
+        UserRoomSetting setting = chatMessageService.toggleMute(currentUser.getId(), roomId);
+        return Result.ok(setting);
+    }
+
+    /**
+     * 获取用户的房间设置列表
+     */
+    @GetMapping("/rooms/settings")
+    public Result getRoomSettings(HttpServletRequest request) {
+        User currentUser = getCurrentUser(request);
+        List<UserRoomSetting> settings = chatMessageService.getUserRoomSettings(currentUser.getId());
+        return Result.ok(settings);
     }
 }

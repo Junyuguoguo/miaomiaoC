@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 import sen.yuhuang.backend.entity.ChatRoom;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 聊天房间数据访问层
@@ -34,4 +35,14 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
      */
     @Query("SELECT r FROM ChatRoom r ORDER BY r.id ASC")
     List<ChatRoom> findAllRooms();
+
+    /**
+     * 根据群号查找房间
+     */
+    Optional<ChatRoom> findByGroupNumber(String groupNumber);
+
+    /**
+     * 检查群号是否存在
+     */
+    boolean existsByGroupNumber(String groupNumber);
 }

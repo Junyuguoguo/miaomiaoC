@@ -74,6 +74,12 @@ public class ChatRoom {
     private String college;
 
     /**
+     * 6位群号（自动生成）
+     */
+    @Column(name = "group_number", length = 6, unique = true)
+    private String groupNumber;
+
+    /**
      * 更新时间
      */
     @Column(name = "update_time")

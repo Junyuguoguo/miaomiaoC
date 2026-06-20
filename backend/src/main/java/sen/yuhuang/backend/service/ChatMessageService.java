@@ -16,10 +16,12 @@ import sen.yuhuang.backend.entity.ChatMessage;
 import sen.yuhuang.backend.entity.ChatRoom;
 import sen.yuhuang.backend.entity.ChatRoomMember;
 import sen.yuhuang.backend.entity.User;
+import sen.yuhuang.backend.entity.UserRoomSetting;
 import sen.yuhuang.backend.repository.ChatMessageRepository;
 import sen.yuhuang.backend.repository.ChatRoomMemberRepository;
 import sen.yuhuang.backend.repository.ChatRoomRepository;
 import sen.yuhuang.backend.repository.UserRepository;
+import sen.yuhuang.backend.repository.UserRoomSettingRepository;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -49,6 +51,7 @@ public class ChatMessageService {
     private final ChatRoomMemberRepository chatRoomMemberRepository;
     private final UserRepository userRepository;
     private final StringRedisTemplate redisTemplate;
+    private final UserRoomSettingRepository userRoomSettingRepository;
 
     // Redis Key 前缀
     private static final String MESSAGE_CACHE_KEY = "chat:message:";
@@ -400,6 +403,7 @@ public class ChatMessageService {
         room.setRoomType("PUBLIC");
         room.setCurrentMembers(0);
         room.setIsActive(true);
+        room.setGroupNumber(generateGroupNumber());
         return chatRoomRepository.save(room);
     }
 
@@ -409,6 +413,55 @@ public class ChatMessageService {
     @Transactional
     public void deleteRoom(Long roomId) {
         chatRoomRepository.deleteById(roomId);
+    }
+
+    /**
+     * 生成唯一的6位群号
+     */
+    private String generateGroupNumber() {
+        String number;
+        do {
+            number = String.format("%06d", (int)(Math.random() * 900000) + 100000);
+        } while (chatRoomRepository.existsByGroupNumber(number));
+        return number;
+    }
+
+    /**
+     * 根据群号查找房间
+     */
+    public ChatRoom findByGroupNumber(String groupNumber) {
+        return chatRoomRepository.findByGroupNumber(groupNumber).orElse(null);
+    }
+
+    /**
+     * 切换置顶状态
+     */
+    public UserRoomSetting togglePin(Long userId, Long roomId) {
+        UserRoomSetting setting = userRoomSettingRepository.findByUserIdAndRoomId(userId, roomId)
+                .orElse(new UserRoomSetting());
+        setting.setUserId(userId);
+        setting.setRoomId(roomId);
+        setting.setIsPinned(!Boolean.TRUE.equals(setting.getIsPinned()));
+        return userRoomSettingRepository.save(setting);
+    }
+
+    /**
+     * 切换免打扰状态
+     */
+    public UserRoomSetting toggleMute(Long userId, Long roomId) {
+        UserRoomSetting setting = userRoomSettingRepository.findByUserIdAndRoomId(userId, roomId)
+                .orElse(new UserRoomSetting());
+        setting.setUserId(userId);
+        setting.setRoomId(roomId);
+        setting.setIsMuted(!Boolean.TRUE.equals(setting.getIsMuted()));
+        return userRoomSettingRepository.save(setting);
+    }
+
+    /**
+     * 获取用户的房间设置列表
+     */
+    public List<UserRoomSetting> getUserRoomSettings(Long userId) {
+        return userRoomSettingRepository.findByUserId(userId);
     }
 
     /**
