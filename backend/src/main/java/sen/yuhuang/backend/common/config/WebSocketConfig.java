@@ -19,6 +19,13 @@ import sen.yuhuang.backend.common.filter.WebSocketHandshakeInterceptor;
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final WebSocketHandshakeInterceptor handshakeInterceptor;
+    private static final String[] ALLOWED_ORIGIN_PATTERNS = {
+            "http://localhost:*",
+            "http://127.0.0.1:*",
+            "http://106.53.50.72:5173",
+            "http://aa.junyuguoguo.xyz",
+            "https://aa.junyuguoguo.xyz"
+    };
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
@@ -34,13 +41,15 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // 注册 WebSocket 端点，客户端通过这个端点建立连接
+        // 原生 WebSocket 端点，匹配前端 chat-websocket.js 中的 /ws-chat/websocket
+        registry.addEndpoint("/ws-chat/websocket")
+                .setAllowedOriginPatterns(ALLOWED_ORIGIN_PATTERNS)
+                .addInterceptors(handshakeInterceptor);
+
+        // SockJS fallback 端点；如果前端改用 SockJS 客户端，可以连接 /ws-chat
         registry.addEndpoint("/ws-chat")
-                .setAllowedOrigins("*")  // 允许所有来源（生产环境应该限制）
-                .addInterceptors(handshakeInterceptor)  // 添加握手拦截器用于身份验证
-                .withSockJS();  // 启用 SockJS  fallback
-        
-        // 也可以添加原生 WebSocket 端点（不使用 SockJS）
-        // registry.addEndpoint("/ws-chat").setAllowedOrigins("*");
+                .setAllowedOriginPatterns(ALLOWED_ORIGIN_PATTERNS)
+                .addInterceptors(handshakeInterceptor)
+                .withSockJS();
     }
 }

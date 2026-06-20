@@ -4,28 +4,58 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import sen.yuhuang.backend.common.utils.RedisUtil;
+import sen.yuhuang.backend.entity.User;
+import sen.yuhuang.backend.repository.UserRepository;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
 @Component
 public class TokenAuthenticationFilter extends OncePerRequestFilter {
 
-    // 移除 Redis 依赖（因为不再做 Token 校验）
-    public TokenAuthenticationFilter() {}
+    private final RedisUtil redisUtil;
+    private final UserRepository userRepository;
+
+    public TokenAuthenticationFilter(RedisUtil redisUtil, UserRepository userRepository) {
+        this.redisUtil = redisUtil;
+        this.userRepository = userRepository;
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        // 1. 仅保留“放行无需认证接口”的逻辑
         String requestURI = request.getRequestURI();
-        if (requestURI.startsWith("/api/auth/")) {
+
+        // skip auth endpoints and websocket
+        if (requestURI.startsWith("/api/auth/") || requestURI.startsWith("/ws-chat")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // 2. 其他接口：完全放行，不做任何 Token 校验（交给前端控制）
-        // 注意：这里直接放行，不再判断 Token 是否存在/有效
+        // extract token from Authorization header
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+
+            // get username from X-Username header, validate via Redis
+            String username = request.getHeader("X-Username");
+            if (username != null && !username.isEmpty()) {
+                boolean valid = redisUtil.validateToken(username, token);
+                if (valid) {
+                    User user = userRepository.findUserByUsername(username);
+                    if (user != null) {
+                        UsernamePasswordAuthenticationToken authentication =
+                                new UsernamePasswordAuthenticationToken(user, null, new ArrayList<>());
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                    }
+                }
+            }
+        }
+
         filterChain.doFilter(request, response);
     }
 }

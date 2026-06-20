@@ -49,11 +49,11 @@ public class ChatWebSocketController {
 
             // 向接收者推送消息
             String destination = "/user/" + request.getReceiverId() + "/queue/messages";
-            messagingTemplate.convertAndSend(destination, Result.success(response));
+            messagingTemplate.convertAndSend(destination, Result.ok(response));
 
             // 同时发送给发送者（用于确认消息已发送）
             String senderDestination = "/user/" + senderId + "/queue/messages";
-            messagingTemplate.convertAndSend(senderDestination, Result.success(response));
+            messagingTemplate.convertAndSend(senderDestination, Result.ok(response));
 
             log.info("单聊消息发送成功: {} -> {}, 消息ID: {}", senderId, request.getReceiverId(), response.getId());
 
@@ -92,7 +92,7 @@ public class ChatWebSocketController {
 
             // 向房间内所有成员推送消息
             String destination = "/topic/room/" + request.getRoomId();
-            messagingTemplate.convertAndSend(destination, Result.success(response));
+            messagingTemplate.convertAndSend(destination, Result.ok(response));
 
             log.info("群聊消息发送成功: 房间={}, 消息ID={}", request.getRoomId(), response.getId());
 
