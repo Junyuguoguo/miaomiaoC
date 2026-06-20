@@ -1,10 +1,13 @@
 <template>
-  <div class="student-center-container">
+  <div class="student-center-container student-shell">
     <!-- 侧边导航栏 -->
-    <div class="sidebar">
+    <div class="sidebar student-sidebar">
       <!-- 系统标题 -->
       <div class="sidebar-header">
-        <h3>{{ title }}@{{ version }}</h3>
+        <BrandMark
+            :title="title || '机试在线考试系统'"
+            :subtitle="version ? `MiaomiaoC ${version}` : '学校机试刷题与模拟考试平台'"
+        />
       </div>
       <!-- 用户信息 -->
       <div class="user-info">
@@ -61,10 +64,18 @@
       </div>
     </div>
     <!-- 主内容区域 -->
-    <div class="main-content">
+    <div class="main-content student-main">
       <!-- 顶部操作栏 -->
-      <div class="content-header">
-        <div class="header-title">{{ currentTitle }}</div>
+      <div class="content-header student-topbar">
+        <div class="header-title-wrap">
+          <div class="header-title">{{ currentTitle }}</div>
+          <p>机试在线刷题与模拟考试平台</p>
+        </div>
+        <div class="student-search-pill">
+          <el-icon><Search /></el-icon>
+          <span>搜索题目、知识点、试卷...</span>
+          <kbd>Ctrl + K</kbd>
+        </div>
         <div class="header-actions">
           <el-button
               v-if="userInfo.RoleId === 1"
@@ -96,132 +107,186 @@
         </div>
       </div>
       <!-- 内容切换区域 -->
-      <div class="content-body">
+      <div class="content-body student-content">
         <!-- 1. 个人中心 -->
         <div v-if="currentMenu === '1'" class="page-content personal-center">
-          <!-- 个人信息部分-->
-          <el-card class="info-card" shadow="never">
-            <div class="personal-info">
-              <div class="avatar-section">
-                <el-avatar :size="60" class="user-avatar">
-                  <!-- 如果有头像就显示图片，否则显示默认图标 -->
-                  <img v-if="userInfo.avatar" :src="fixAvatarUrl(userInfo.avatar)" alt="头像" />
-                  <el-icon v-else><User /></el-icon>
-                </el-avatar>
+          <section class="student-hero dashboard-hero">
+            <div>
+              <p class="eyebrow">Student Workspace</p>
+              <h1>欢迎回来，{{ studentDisplayName }}！</h1>
+              <p>
+                今天也要加油学习。保持练习节奏，把每一次机试训练都变成稳定进步。
+              </p>
+              <div class="hero-actions">
+                <el-button type="primary" size="large" @click="handleToQuestionList">
+                  <el-icon><Collection /></el-icon>
+                  开始刷题
+                </el-button>
+                <el-button size="large" plain @click="handleToOnlineExam">
+                  <el-icon><Timer /></el-icon>
+                  模拟考试
+                </el-button>
               </div>
-              <div class="info-section">
-                <div class="info-grid">
-                  <div class="info-item">
-                    <span class="label">用户名：</span>
-                    <span class="value">{{ userInfo.username }}</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="label">真实姓名：</span>
-                    <span class="value">{{ personalRealNameText }}</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="label">学生页隐藏真名：</span>
-                    <span class="value">
-                      <el-switch
-                          v-model="hideRealNameOnStudentPage"
-                          :disabled="!hasRealName"
-                          active-text="隐藏"
-                          inactive-text="显示"
-                          @change="handleRealNamePrivacyChange"
-                      />
-                    </span>
-                  </div>
-                  <div class="info-item">
-                    <span class="label">手机号：</span>
-                    <span class="value">{{ userInfo.phone || '未设置' }}</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="label">报考院校：</span>
-                    <span class="value">{{ userInfo.school || '未设置' }}</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="label">报考专业：</span>
-                    <span class="value">{{ userInfo.major || '未设置' }}</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="label">初试分数：</span>
-                    <span class="value">{{ userInfo.score || '未设置' }}</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="label">邮箱：</span>
-                    <span class="value">{{ userInfo.email || '未设置' }}</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="label">角色：</span>
-                    <span class="value">{{ userRoleName }}</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="label">会员过期时间：</span>
-                    <span class="value">{{ userInfo.vipExpireTime ? formatDate(userInfo.vipExpireTime) : '无' }}</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="label">注册时间：</span>
-                    <span class="value">{{ userInfo.createTime ? formatDate(userInfo.createTime) : '--' }}</span>
-                  </div>
+            </div>
+            <div class="student-code-orbit dashboard-orbit" aria-hidden="true">
+              <span class="student-code-orbit__mark">C</span>
+              <span class="student-code-chip student-code-chip--one">&lt;/&gt;</span>
+              <span class="student-code-chip student-code-chip--two">main.c</span>
+            </div>
+          </section>
+
+          <div class="dashboard-layout">
+            <SoftCard class="profile-panel" padding="lg">
+              <div class="section-heading">
+                <div>
+                  <h2>我的信息</h2>
+                  <p>{{ isVipActive ? 'VIP 学习权益已开启' : '完善资料后开始系统训练' }}</p>
                 </div>
-                <el-button
-                    type="primary"
-                    size="small"
-                    class="edit-info-btn"
-                    @click="handleEditInfo">
+                <el-button type="primary" plain @click="handleEditInfo">
                   <el-icon><Edit /></el-icon>
                   编辑资料
                 </el-button>
               </div>
-            </div>
-          </el-card>
-          <!-- 个人中心统计数据区域-->
-          <div class="stats-card" style="margin-top: 20px;">
-            <el-card shadow="never">
-              <template #header>
-                <div class="stats-header">
-                  <span>学习统计</span>
-                </div>
-              </template>
-              <div class="stats-grid">
-                <div class="stat-item">
-                  <div class="stat-icon">
-                    <el-icon><Document /></el-icon>
-                  </div>
-                  <div class="stat-info">
-                    <div class="stat-value">{{ stats.examCount }}</div>
-                    <div class="stat-label">已考次数</div>
-                  </div>
-                </div>
-                <div class="stat-item">
-                  <div class="stat-icon">
-                    <el-icon><Check /></el-icon>
-                  </div>
-                  <div class="stat-info">
-                    <div class="stat-value">{{ (stats.passRate * 100).toFixed(2) }}%</div>
-                    <div class="stat-label">通过率</div>
-                  </div>
-                </div>
-                <div class="stat-item">
-                  <div class="stat-icon">
-                    <el-icon><EditPen /></el-icon>
-                  </div>
-                  <div class="stat-info">
-                    <div class="stat-value">{{ stats.noteCount }}</div>
-                    <div class="stat-label">笔记数量</div>
-                  </div>
-                </div>
-                <div class="stat-item">
-                  <div class="stat-icon">
-                    <el-icon><Clock /></el-icon>
-                  </div>
-                  <div class="stat-info">
-                    <div class="stat-value">{{ stats.questionCount }}</div>
-                    <div class="stat-label">做题数量</div>
-                  </div>
+              <div class="profile-summary">
+                <el-avatar :size="76" class="user-avatar">
+                  <img v-if="userInfo.avatar" :src="fixAvatarUrl(userInfo.avatar)" alt="头像" />
+                  <el-icon v-else><User /></el-icon>
+                </el-avatar>
+                <div>
+                  <strong>{{ studentDisplayName }}</strong>
+                  <span>{{ userRoleName }}</span>
                 </div>
               </div>
-            </el-card>
+              <div class="info-grid dashboard-info-grid">
+                <div class="info-item">
+                  <span class="label">用户名</span>
+                  <span class="value">{{ userInfo.username || '--' }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="label">真实姓名</span>
+                  <span class="value">{{ personalRealNameText }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="label">学校</span>
+                  <span class="value">{{ userInfo.school || '未设置' }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="label">专业</span>
+                  <span class="value">{{ userInfo.major || '未设置' }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="label">手机号</span>
+                  <span class="value">{{ userInfo.phone || '未设置' }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="label">邮箱</span>
+                  <span class="value">{{ userInfo.email || '未设置' }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="label">会员到期</span>
+                  <span class="value">{{ userInfo.vipExpireTime ? formatDate(userInfo.vipExpireTime) : '无' }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="label">隐藏真名</span>
+                  <span class="value">
+                    <el-switch
+                        v-model="hideRealNameOnStudentPage"
+                        :disabled="!hasRealName"
+                        active-text="隐藏"
+                        inactive-text="显示"
+                        @change="handleRealNamePrivacyChange"
+                    />
+                  </span>
+                </div>
+              </div>
+            </SoftCard>
+
+            <SoftCard class="task-panel" padding="lg">
+              <div class="section-heading">
+                <div>
+                  <h2>今日学习任务</h2>
+                  <p>完成关键动作，保持机试手感。</p>
+                </div>
+              </div>
+              <div class="task-progress">
+                <ProgressRing
+                    :value="completedTaskCount"
+                    :max="dashboardTasks.length"
+                    :label="`${completedTaskCount}/${dashboardTasks.length}`"
+                    caption="任务完成"
+                    tone="purple"
+                />
+                <ul class="task-list">
+                  <li
+                      v-for="task in dashboardTasks"
+                      :key="task.label"
+                      :class="{ done: task.done }"
+                  >
+                    <span aria-hidden="true">{{ task.done ? '✓' : '' }}</span>
+                    {{ task.label }}
+                  </li>
+                </ul>
+              </div>
+            </SoftCard>
+          </div>
+
+          <div class="quick-actions-grid">
+            <QuickActionCard title="继续考试" description="进入在线考试列表" tone="blue" @select="handleToOnlineExam">
+              <template #icon><el-icon><Document /></el-icon></template>
+            </QuickActionCard>
+            <QuickActionCard title="题库练习" description="按题库巩固知识点" tone="green" @select="handleToQuestionList">
+              <template #icon><el-icon><Collection /></el-icon></template>
+            </QuickActionCard>
+            <QuickActionCard title="错题本" description="复盘近期薄弱题目" tone="purple" @select="handleToQuestionList">
+              <template #icon><el-icon><Warning /></el-icon></template>
+            </QuickActionCard>
+            <QuickActionCard title="聊天中心" description="交流解题思路" tone="cyan" @select="handleToChat">
+              <template #icon><el-icon><ChatDotRound /></el-icon></template>
+            </QuickActionCard>
+          </div>
+
+          <div class="student-grid student-grid--4">
+            <MetricCard label="参加考试次数" :value="stats.examCount ?? '--'" hint="累计记录" trend="+练习" tone="blue">
+              <template #icon><el-icon><Document /></el-icon></template>
+            </MetricCard>
+            <MetricCard label="平均通过率" :value="formattedPassRate" hint="基于学习统计" tone="green">
+              <template #icon><el-icon><TrendCharts /></el-icon></template>
+            </MetricCard>
+            <MetricCard label="笔记数量" :value="stats.noteCount ?? '--'" hint="复习沉淀" tone="purple">
+              <template #icon><el-icon><EditPen /></el-icon></template>
+            </MetricCard>
+            <MetricCard label="完成题目数" :value="stats.questionCount ?? '--'" hint="累计刷题" tone="orange">
+              <template #icon><el-icon><Clock /></el-icon></template>
+            </MetricCard>
+          </div>
+
+          <div class="dashboard-lower-grid">
+            <SoftCard padding="lg">
+              <div class="section-heading">
+                <div>
+                  <h2>学习日历</h2>
+                  <p>连续学习 {{ learningDays || '--' }} 天</p>
+                </div>
+              </div>
+              <div class="calendar-strip">
+                <span v-for="day in calendarDays" :key="day" :class="{ active: day === '今' }">{{ day }}</span>
+              </div>
+            </SoftCard>
+            <SoftCard padding="lg">
+              <div class="section-heading">
+                <div>
+                  <h2>最近成就</h2>
+                  <p>{{ achievementText }}</p>
+                </div>
+              </div>
+              <div class="achievement-row">
+                <span class="achievement-medal" aria-hidden="true">C</span>
+                <div>
+                  <strong>{{ achievementTitle }}</strong>
+                  <small>继续保持训练节奏，下一次模拟考试会更稳。</small>
+                </div>
+              </div>
+            </SoftCard>
           </div>
         </div>
         <!-- 编辑资料模态框 -->
@@ -1078,6 +1143,11 @@ import { getVipPlans } from "@/api/vip.js";
 import { redeemVipKey } from "@/api/vip-key.js";
 import Cropper from 'cropperjs'
 import 'cropperjs/dist/cropper.css'
+import BrandMark from '@/components/student/BrandMark.vue'
+import SoftCard from '@/components/student/SoftCard.vue'
+import MetricCard from '@/components/student/MetricCard.vue'
+import ProgressRing from '@/components/student/ProgressRing.vue'
+import QuickActionCard from '@/components/student/QuickActionCard.vue'
 
 const router = useRouter()
 const title = ref('')
@@ -2156,6 +2226,45 @@ const isVipActive = computed(() => {
     return false
   }
   return dayjs(userInfo.value.vipExpireTime).isAfter(dayjs())
+})
+
+const calendarDays = ['一', '二', '三', '四', '五', '六', '今']
+
+const passRatePercent = computed(() => {
+  const raw = Number(stats.value.passRate || 0)
+  const normalized = raw > 1 ? raw : raw * 100
+  return Math.max(0, Math.min(100, normalized))
+})
+
+const formattedPassRate = computed(() => `${passRatePercent.value.toFixed(1)}%`)
+
+const learningDays = computed(() => {
+  if (!userInfo.value.createTime) return 0
+  const days = dayjs().diff(dayjs(userInfo.value.createTime), 'day') + 1
+  return Math.max(1, days)
+})
+
+const dashboardTasks = computed(() => [
+  { label: '完善个人资料', done: hasRealName.value },
+  { label: '练习15道编程题', done: Number(stats.value.questionCount || 0) >= 15 },
+  { label: '完成1次模拟考试', done: Number(stats.value.examCount || 0) >= 1 },
+  { label: '复习错题本', done: activeBankTab.value === 'wrong' && Number(totalWrongCount.value || 0) > 0 },
+  { label: '进入交流大厅', done: false }
+])
+
+const completedTaskCount = computed(() => dashboardTasks.value.filter(task => task.done).length)
+
+const achievementTitle = computed(() => {
+  if (Number(stats.value.questionCount || 0) >= 100) return 'C语言新星'
+  if (Number(stats.value.examCount || 0) >= 1) return '模拟考试已启动'
+  return '学习旅程已开启'
+})
+
+const achievementText = computed(() => {
+  if (Number(stats.value.questionCount || 0) > 0) {
+    return `已经完成 ${stats.value.questionCount} 道题目`
+  }
+  return '完成第一道题后会点亮学习成就'
 })
 
 // 添加日期格式化函数
@@ -4436,6 +4545,409 @@ const handleLogout = () => {
 
   .vip-hero-panel {
     padding: 20px;
+  }
+}
+
+/* Student visual system page overrides */
+.student-center-container.student-shell {
+  display: grid;
+  height: auto;
+  min-height: 100vh;
+  background:
+      radial-gradient(circle at 18% 8%, rgba(37, 99, 235, 0.10), transparent 30%),
+      radial-gradient(circle at 86% 0%, rgba(124, 92, 255, 0.09), transparent 26%),
+      linear-gradient(180deg, #f8fbff 0%, #f3f7fe 48%, #edf4fb 100%);
+}
+
+.sidebar.student-sidebar {
+  width: auto;
+  position: sticky;
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.sidebar-header {
+  padding: 0 4px 22px;
+  text-align: left;
+}
+
+.user-info {
+  margin: 6px 0 18px;
+  padding: 22px 10px;
+  background: linear-gradient(180deg, rgba(239, 246, 255, 0.84), rgba(255, 255, 255, 0.7));
+  border: 1px solid rgba(207, 220, 240, 0.82);
+  border-radius: 8px;
+}
+
+.user-avatar {
+  border: 3px solid rgba(255, 255, 255, 0.92);
+  box-shadow: 0 16px 28px rgba(37, 99, 235, 0.16);
+}
+
+.main-content.student-main {
+  margin-left: 0;
+  padding: 24px 28px 34px;
+  background: transparent;
+}
+
+.content-header.student-topbar {
+  min-height: 60px;
+  margin-bottom: 22px;
+}
+
+.header-title-wrap {
+  min-width: 0;
+}
+
+.header-title-wrap p {
+  margin: 3px 0 0;
+  color: var(--app-text-muted);
+  font-size: 13px;
+}
+
+.student-search-pill {
+  width: min(520px, 38vw);
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 14px;
+  color: #7a8ba6;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(207, 220, 240, 0.82);
+  border-radius: 8px;
+  box-shadow: 0 12px 24px rgba(40, 78, 142, 0.06);
+}
+
+.student-search-pill span {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.student-search-pill kbd {
+  padding: 4px 9px;
+  color: #7a8ba6;
+  background: #f2f6fd;
+  border: 1px solid rgba(207, 220, 240, 0.82);
+  border-radius: 7px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.content-body.student-content {
+  display: block;
+  background: transparent;
+}
+
+.dashboard-hero {
+  margin-bottom: 18px;
+}
+
+.dashboard-hero .eyebrow {
+  margin: 0 0 10px;
+  color: var(--app-primary);
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 22px;
+  flex-wrap: wrap;
+}
+
+.dashboard-orbit {
+  width: min(260px, 100%);
+}
+
+.dashboard-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.65fr);
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.section-heading h2 {
+  margin: 0;
+  color: var(--app-text);
+  font-size: 20px;
+  font-weight: 850;
+}
+
+.section-heading p {
+  margin: 5px 0 0;
+  color: var(--app-text-muted);
+  font-size: 13px;
+}
+
+.profile-summary {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.profile-summary strong {
+  display: block;
+  color: var(--app-text);
+  font-size: 22px;
+  font-weight: 850;
+}
+
+.profile-summary span {
+  display: inline-flex;
+  margin-top: 6px;
+  padding: 3px 10px;
+  color: var(--app-primary);
+  background: var(--app-primary-soft);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.dashboard-info-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 20px;
+}
+
+.dashboard-info-grid .info-item {
+  align-items: center;
+  min-height: 42px;
+  padding: 10px 12px;
+  background: rgba(248, 251, 255, 0.78);
+  border: 1px solid rgba(225, 234, 247, 0.92);
+  border-radius: 8px;
+}
+
+.dashboard-info-grid .label {
+  width: 88px;
+  color: #718199;
+}
+
+.task-panel {
+  min-height: 100%;
+}
+
+.task-progress {
+  display: grid;
+  justify-items: center;
+  gap: 18px;
+}
+
+.task-list {
+  width: 100%;
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.task-list li {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  min-height: 34px;
+  color: var(--app-text-muted);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.task-list li span {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #d9e4f3;
+  border-radius: 5px;
+  color: #fff;
+  font-size: 12px;
+}
+
+.task-list li.done {
+  color: var(--app-text);
+}
+
+.task-list li.done span {
+  background: var(--app-success);
+  border-color: var(--app-success);
+}
+
+.quick-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.dashboard-lower-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.calendar-strip {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.calendar-strip span {
+  min-height: 46px;
+  display: grid;
+  place-items: center;
+  color: #7586a1;
+  background: #f5f8fd;
+  border: 1px solid rgba(218, 229, 245, 0.92);
+  border-radius: 8px;
+  font-weight: 800;
+}
+
+.calendar-strip span.active {
+  color: #fff;
+  background: linear-gradient(135deg, #1f7bff, #7c5cff);
+  border-color: transparent;
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.22);
+}
+
+.achievement-row {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+}
+
+.achievement-medal {
+  width: 76px;
+  height: 76px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f59e0b, #ffc857);
+  box-shadow: 0 18px 34px rgba(245, 158, 11, 0.26);
+  font-size: 34px;
+  font-weight: 950;
+}
+
+.achievement-row strong {
+  display: block;
+  color: var(--app-text);
+  font-size: 20px;
+  font-weight: 850;
+}
+
+.achievement-row small {
+  display: block;
+  margin-top: 6px;
+  color: var(--app-text-muted);
+  line-height: 1.6;
+}
+
+.exam-record > .el-card,
+.online-exam > .el-card,
+.question-bank > .el-card {
+  border-radius: 8px;
+  border-color: rgba(207, 220, 240, 0.88);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 14px 34px rgba(40, 78, 142, 0.08);
+}
+
+.search-bar,
+.bank-header-bar {
+  background: linear-gradient(180deg, rgba(248, 251, 255, 0.92), rgba(255, 255, 255, 0.9));
+}
+
+.exam-card,
+.bank-card,
+.vip-plan-card {
+  border-radius: 8px;
+}
+
+@media (max-width: 1180px) {
+  .student-center-container.student-shell {
+    grid-template-columns: 232px minmax(0, 1fr);
+  }
+
+  .student-search-pill {
+    width: min(420px, 34vw);
+  }
+
+  .quick-actions-grid,
+  .student-grid.student-grid--4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-layout,
+  .dashboard-lower-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .student-center-container.student-shell {
+    display: block;
+  }
+
+  .sidebar.student-sidebar {
+    position: relative;
+    height: auto;
+    border-right: 0;
+  }
+
+  .main-content.student-main {
+    padding: 18px;
+  }
+
+  .content-header.student-topbar {
+    align-items: stretch;
+  }
+
+  .student-search-pill {
+    width: 100%;
+  }
+}
+
+@media (max-width: 680px) {
+  .main-content.student-main {
+    padding: 14px;
+  }
+
+  .dashboard-info-grid,
+  .quick-actions-grid,
+  .student-grid.student-grid--4 {
+    grid-template-columns: 1fr;
+  }
+
+  .section-heading,
+  .profile-summary {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .dashboard-info-grid .info-item {
+    display: grid;
+    gap: 4px;
+  }
+
+  .dashboard-info-grid .label {
+    width: auto;
   }
 }
 
