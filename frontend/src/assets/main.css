@@ -108,3 +108,60 @@ button,
     transition-duration: 0.01ms !important;
   }
 }
+
+/* === Dynamic UI Transitions === */
+
+/* Page content fade-slide */
+.page-content {
+  animation: fadeSlideIn 0.3s ease;
+}
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Card hover lift */
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(16, 32, 51, 0.12);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Button press effect */
+.el-button:active {
+  transform: scale(0.97);
+  transition: transform 0.1s ease;
+}
+
+/* Input focus glow */
+.el-input__wrapper:focus-within,
+.el-textarea__inner:focus {
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1) !important;
+  transition: box-shadow 0.2s ease;
+}
+
+/* Table row hover */
+.el-table__row {
+  transition: background-color 0.15s ease;
+}
+
+/* Dialog entrance */
+.el-dialog {
+  animation: dialogEnter 0.3s ease;
+}
+
+@keyframes dialogEnter {
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Tab switching transition */
+.el-tabs__content {
+  animation: fadeSlideIn 0.25s ease;
+}

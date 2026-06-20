@@ -781,6 +781,12 @@
           <el-table :data="chatRoomList" border>
             <el-table-column label="ID" prop="id" width="70" />
             <el-table-column label="房间名称" prop="roomName" />
+            <el-table-column label="群号" width="120" align="center">
+              <template #default="{ row }">
+                <span class="group-num">{{ row.groupNumber }}</span>
+                <el-button type="primary" link size="small" @click="copyText(row.groupNumber)">复制</el-button>
+              </template>
+            </el-table-column>
             <el-table-column label="所属学院" width="150">
               <template #default="{ row }">
                 <el-tag v-if="row.college" type="warning">{{ row.college }}</el-tag>
@@ -1961,6 +1967,14 @@ const handleDeleteRoom = async (roomId) => {
     const res = await deleteRoomApi(roomId)
     if (res && res.code === 200) { ElMessage.success('删除成功'); await loadChatRooms() }
   } catch {}
+}
+
+const copyText = (text) => {
+  navigator.clipboard.writeText(text).then(() => {
+    ElMessage.success('已复制: ' + text)
+  }).catch(() => {
+    ElMessage.error('复制失败')
+  })
 }
 
 // 自动同步 bankTitle (根据bankId)
