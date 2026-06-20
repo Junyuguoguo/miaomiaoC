@@ -35,8 +35,10 @@
             </el-avatar>
           </div>
           <div class="message-body">
-            <div class="bubble" :class="[msg.senderId === currentUserId ? 'bubble-self' : 'bubble-peer', (msg.senderRole === 3 || msg.senderRole === 4) ? 'bubble-teacher' : '']">
-              <span v-if="(msg.senderRole === 3 || msg.senderRole === 4) && msg.senderCollege" class="teacher-tag">{{ msg.senderCollege }}</span>
+            <div class="bubble" :class="getBubbleClass(msg)">
+              <span v-if="msg.senderRole === 4" class="role-badge admin-badge">管理员</span>
+              <span v-else-if="msg.senderRole === 3" class="role-badge teacher-badge">教师</span>
+              <span v-else-if="msg.senderRole === 2" class="role-badge vip-badge">VIP</span>
               {{ msg.content }}
             </div>
           </div>
@@ -123,6 +125,19 @@ const fixAvatarUrl = (url) => {
 
 // Computed
 const currentUserId = computed(() => userStore.getUserId)
+
+const getBubbleClass = (msg) => {
+  const classes = []
+  if (msg.senderId === currentUserId.value) {
+    classes.push('bubble-self')
+  } else {
+    classes.push('bubble-peer')
+  }
+  if (msg.senderRole === 2) classes.push('bubble-vip')
+  else if (msg.senderRole === 3) classes.push('bubble-teacher')
+  else if (msg.senderRole === 4) classes.push('bubble-admin')
+  return classes.join(' ')
+}
 const chatType = computed(() => {
   if (route.path.includes('/chat/private')) return 'private'
   if (route.path.includes('/chat/room')) return 'room'
@@ -664,21 +679,95 @@ onUnmounted(() => {
   to { opacity: 1; transform: scale(1); }
 }
 
-/* --- Teacher identity --- */
-.teacher-tag {
+/* === Role Badges === */
+.role-badge {
   display: inline-block;
-  font-size: 11px;
+  font-size: 10px;
   padding: 1px 6px;
-  border-radius: 6px;
-  background: rgba(212, 168, 67, 0.15);
-  color: #B8922E;
-  margin-right: 6px;
-  margin-bottom: 4px;
-  font-weight: 600;
+  border-radius: 8px;
+  font-weight: 700;
+  margin-left: 6px;
+  vertical-align: middle;
+  letter-spacing: 0.3px;
 }
 
-.bubble-teacher {
-  border: 2px solid #D4A843;
-  box-shadow: 0 2px 12px rgba(212, 168, 67, 0.2);
+.vip-badge {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+}
+
+.teacher-badge {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+}
+
+.admin-badge {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+  color: #fff;
+}
+
+/* === Role-Specific Bubbles (peer only) === */
+.bubble-vip.bubble-peer {
+  background: linear-gradient(135deg, #fffbeb, #fef3c7);
+  border: 1px solid #fbbf24;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.12);
+}
+
+.bubble-vip.bubble-peer::before {
+  border-color: transparent #fef3c7 transparent transparent;
+}
+
+.bubble-teacher.bubble-peer {
+  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+  border: 1px solid #34d399;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.12);
+}
+
+.bubble-teacher.bubble-peer::before {
+  border-color: transparent #d1fae5 transparent transparent;
+}
+
+.bubble-admin.bubble-peer {
+  background: linear-gradient(135deg, #f5f3ff, #ede9fe);
+  border: 1px solid #a78bfa;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.12);
+}
+
+.bubble-admin.bubble-peer::before {
+  border-color: transparent #ede9fe transparent transparent;
+}
+
+/* === Role-Specific Bubbles (self) === */
+.bubble-vip.bubble-self {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+  border: none;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
+}
+
+.bubble-vip.bubble-self::after {
+  border-color: transparent transparent transparent #d97706;
+}
+
+.bubble-teacher.bubble-self {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  border: none;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+}
+
+.bubble-teacher.bubble-self::after {
+  border-color: transparent transparent transparent #059669;
+}
+
+.bubble-admin.bubble-self {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+  color: #fff;
+  border: none;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.2);
+}
+
+.bubble-admin.bubble-self::after {
+  border-color: transparent transparent transparent #7c3aed;
 }
 </style>
