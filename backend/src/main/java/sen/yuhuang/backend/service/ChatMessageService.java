@@ -382,12 +382,24 @@ public class ChatMessageService {
     public List<ChatRoom> getVisibleRooms(Long userId) {
         User user = userRepository.findById(userId).orElse(null);
         if (user == null) return List.of();
+        List<ChatRoom> rooms;
         // 管理员可以看到所有房间
         if (user.getRoleId() != null && user.getRoleId() >= 3) {
-            return chatRoomRepository.findAllRooms();
+            rooms = chatRoomRepository.findAllRooms();
+        } else {
+            // 普通用户只能看到全校房间和本学院房间
+            rooms = chatRoomRepository.findVisibleRooms(user.getCollege());
         }
-        // 普通用户只能看到全校房间和本学院房间
-        return chatRoomRepository.findVisibleRooms(user.getCollege());
+        // Auto-generate group numbers for rooms that don't have one
+        boolean updated = false;
+        for (ChatRoom room : rooms) {
+            if (room.getGroupNumber() == null || room.getGroupNumber().isEmpty()) {
+                room.setGroupNumber(generateGroupNumber());
+                chatRoomRepository.save(room);
+                updated = true;
+            }
+        }
+        return rooms;
     }
 
     /**
