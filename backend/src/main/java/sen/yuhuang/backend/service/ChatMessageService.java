@@ -382,13 +382,18 @@ public class ChatMessageService {
     public List<ChatRoom> getVisibleRooms(Long userId) {
         User user = userRepository.findById(userId).orElse(null);
         if (user == null) return List.of();
-        List<ChatRoom> rooms;
-        // 管理员/教师可以看到所有房间
+        List<ChatRoom> rooms = new ArrayList<>();
+
         if (user.getRoleId() != null && user.getRoleId() >= 3) {
+            // 教师/管理员看到所有房间
             rooms = chatRoomRepository.findAllRooms();
-        } else if (user.getRoleId() != null && user.getRoleId() == 2) {
-            // VIP用户：可以看到所有免费房间 + 已加入的VIP房间
-            rooms = new ArrayList<>(chatRoomRepository.findAllFreeRooms());
+        } else {
+            // 普通用户/VIP：综合交流大厅 + 已加入的房间
+            // 1. 综合交流大厅始终可见
+            ChatRoom publicHall = chatRoomRepository.findByRoomName("综合交流大厅");
+            if (publicHall != null) rooms.add(publicHall);
+
+            // 2. 已加入的房间
             List<Long> joinedRoomIds = chatRoomMemberRepository.findByUserId(userId)
                     .stream().map(ChatRoomMember::getRoomId).collect(Collectors.toList());
             if (!joinedRoomIds.isEmpty()) {
@@ -399,21 +404,8 @@ public class ChatMessageService {
                     }
                 }
             }
-        } else {
-            // 免费房间：根据学院过滤
-            rooms = new ArrayList<>(chatRoomRepository.findVisibleFreeRooms(user.getCollege()));
-            // VIP房间：只显示用户已加入的
-            List<Long> joinedRoomIds = chatRoomMemberRepository.findByUserId(userId)
-                    .stream().map(ChatRoomMember::getRoomId).collect(Collectors.toList());
-            if (!joinedRoomIds.isEmpty()) {
-                List<ChatRoom> joinedRooms = chatRoomRepository.findByIdIn(joinedRoomIds);
-                for (ChatRoom r : joinedRooms) {
-                    if ("VIP".equals(r.getRoomLevel()) && !rooms.stream().anyMatch(x -> x.getId().equals(r.getId()))) {
-                        rooms.add(r);
-                    }
-                }
-            }
         }
+
         // Auto-generate group numbers for rooms that don't have one
         for (ChatRoom room : rooms) {
             if (room.getGroupNumber() == null || room.getGroupNumber().isEmpty()) {

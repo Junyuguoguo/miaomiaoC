@@ -53,6 +53,11 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
     Optional<ChatRoom> findByGroupNumber(String groupNumber);
 
     /**
+     * 根据房间名查找
+     */
+    ChatRoom findByRoomName(String roomName);
+
+    /**
      * 检查群号是否存在
      */
     boolean existsByGroupNumber(String groupNumber);

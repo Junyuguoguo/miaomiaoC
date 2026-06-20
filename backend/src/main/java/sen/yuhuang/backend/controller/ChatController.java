@@ -179,12 +179,18 @@ public class ChatController {
         if (room == null) {
             return Result.badRequest("群号不存在");
         }
+        // 综合交流大厅不需要加入，所有人都能看
+        if ("综合交流大厅".equals(room.getRoomName())) {
+            return Result.ok(room);
+        }
         // VIP房间需要VIP权限
         if ("VIP".equals(room.getRoomLevel())) {
             if (currentUser.getVipExpireTime() == null || currentUser.getVipExpireTime().isBefore(java.time.LocalDateTime.now())) {
                 return Result.badRequest("该群为VIP专属群，请先开通VIP");
             }
         }
+        // 加入房间
+        chatMessageService.joinRoom(currentUser.getId(), room.getId());
         return Result.ok(room);
     }
 
