@@ -437,6 +437,14 @@ public class ChatMessageService {
         chatRoomRepository.deleteById(roomId);
     }
 
+    public ChatRoom findById(Long roomId) {
+        return chatRoomRepository.findById(roomId).orElse(null);
+    }
+
+    public ChatRoom saveRoom(ChatRoom room) {
+        return chatRoomRepository.save(room);
+    }
+
     /**
      * 生成唯一的6位群号
      */

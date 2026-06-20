@@ -800,8 +800,9 @@
               </template>
             </el-table-column>
             <el-table-column label="成员数" prop="currentMembers" width="100" align="center" />
-            <el-table-column label="操作" width="140" fixed="right">
+            <el-table-column label="操作" width="200" fixed="right">
               <template #default="{ row }">
+                <el-button type="primary" link @click="openEditRoom(row)">编辑</el-button>
                 <el-button type="danger" link @click="handleDeleteRoom(row.id)">删除</el-button>
               </template>
             </el-table-column>
@@ -966,6 +967,37 @@
         <el-button type="primary" @click="handleCreateRoom">创建</el-button>
       </template>
     </el-dialog>
+
+    <!-- 编辑聊天室弹窗 -->
+    <el-dialog v-model="showEditRoomDialog" title="编辑聊天室" width="400px">
+      <el-form :model="editRoomForm" label-width="80px">
+        <el-form-item label="房间名称">
+          <el-input v-model="editRoomForm.roomName" placeholder="房间名称" />
+        </el-form-item>
+        <el-form-item label="所属学院">
+          <el-select v-model="editRoomForm.college" placeholder="留空为全校大厅" clearable style="width:100%">
+            <el-option label="计算机学院" value="计算机学院" />
+            <el-option label="机械学院" value="机械学院" />
+            <el-option label="电子信息学院" value="电子信息学院" />
+            <el-option label="经济管理学院" value="经济管理学院" />
+            <el-option label="外国语学院" value="外国语学院" />
+            <el-option label="理学院" value="理学院" />
+            <el-option label="人文社科学院" value="人文社科学院" />
+            <el-option label="自动化学院" value="自动化学院" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="房间类型">
+          <el-radio-group v-model="editRoomForm.roomLevel">
+            <el-radio value="FREE">普通（免费用户自动加入）</el-radio>
+            <el-radio value="VIP">VIP专属（需群号加入）</el-radio>
+          </el-radio-group>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showEditRoomDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleEditRoom">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -1007,7 +1039,7 @@ import {
   deleteVipKey
 } from "@/api/vip-key.js"
 import { getViolationRecords } from "@/api/exam.js"
-import { getRooms as getRoomsApi, createRoom as createRoomApi, deleteRoom as deleteRoomApi } from '@/api/chat'
+import { getRooms as getRoomsApi, createRoom as createRoomApi, deleteRoom as deleteRoomApi, updateRoom as updateRoomApi } from '@/api/chat'
 
 // 初始化路由和用户状态管理
 const router = useRouter()
@@ -1979,6 +2011,36 @@ const handleDeleteRoom = async (roomId) => {
     const res = await deleteRoomApi(roomId)
     if (res && res.code === 200) { ElMessage.success('删除成功'); await loadChatRooms() }
   } catch {}
+}
+
+// 编辑聊天室
+const showEditRoomDialog = ref(false)
+const editRoomForm = ref({ id: null, roomName: '', college: '', roomLevel: 'FREE' })
+
+const openEditRoom = (row) => {
+  editRoomForm.value = {
+    id: row.id,
+    roomName: row.roomName || '',
+    college: row.college || '',
+    roomLevel: row.roomLevel || 'FREE'
+  }
+  showEditRoomDialog.value = true
+}
+
+const handleEditRoom = async () => {
+  if (!editRoomForm.value.roomName.trim()) { ElMessage.warning('请输入房间名称'); return }
+  try {
+    const res = await updateRoomApi(editRoomForm.value.id, {
+      roomName: editRoomForm.value.roomName,
+      college: editRoomForm.value.college || null,
+      roomLevel: editRoomForm.value.roomLevel
+    })
+    if (res && res.code === 200) {
+      ElMessage.success('修改成功')
+      showEditRoomDialog.value = false
+      await loadChatRooms()
+    }
+  } catch { ElMessage.error('修改失败') }
 }
 
 const copyText = (text) => {

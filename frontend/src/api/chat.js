@@ -145,6 +145,10 @@ export function deleteRoom(roomId) {
     return request({ url: `/api/chat/rooms/${roomId}`, method: 'delete' })
 }
 
+export function updateRoom(roomId, data) {
+    return request({ url: `/api/chat/rooms/${roomId}`, method: 'put', data })
+}
+
 /**
  * 通过群号加入群聊
  */

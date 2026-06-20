@@ -154,6 +154,21 @@ public class ChatController {
         return Result.ok("删除成功");
     }
 
+    @PutMapping("/rooms/{roomId}")
+    public Result updateRoom(HttpServletRequest request, @PathVariable Long roomId, @RequestBody Map<String, String> body) {
+        User currentUser = getCurrentUser(request);
+        if (currentUser.getRoleId() == null || currentUser.getRoleId() < 3) {
+            return Result.badRequest("仅教师可修改聊天室");
+        }
+        ChatRoom room = chatMessageService.findById(roomId);
+        if (room == null) return Result.badRequest("聊天室不存在");
+        if (body.containsKey("roomName")) room.setRoomName(body.get("roomName"));
+        if (body.containsKey("college")) room.setCollege(body.get("college"));
+        if (body.containsKey("roomLevel")) room.setRoomLevel(body.get("roomLevel"));
+        if (body.containsKey("description")) room.setDescription(body.get("description"));
+        return Result.ok(chatMessageService.saveRoom(room));
+    }
+
     /**
      * 根据群号加入房间
      */
