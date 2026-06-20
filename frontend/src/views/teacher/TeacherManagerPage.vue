@@ -793,6 +793,12 @@
                 <el-tag v-else type="info">全校大厅</el-tag>
               </template>
             </el-table-column>
+            <el-table-column label="类型" width="100" align="center">
+              <template #default="{ row }">
+                <el-tag v-if="row.roomLevel === 'VIP'" type="danger" effect="dark">VIP</el-tag>
+                <el-tag v-else type="success">普通</el-tag>
+              </template>
+            </el-table-column>
             <el-table-column label="成员数" prop="currentMembers" width="100" align="center" />
             <el-table-column label="操作" width="140" fixed="right">
               <template #default="{ row }">
@@ -947,6 +953,12 @@
             <el-option label="人文社科学院" value="人文社科学院" />
             <el-option label="自动化学院" value="自动化学院" />
           </el-select>
+        </el-form-item>
+        <el-form-item label="房间类型">
+          <el-radio-group v-model="newRoomForm.roomLevel">
+            <el-radio value="FREE">普通（免费用户自动加入）</el-radio>
+            <el-radio value="VIP">VIP专属（需群号加入）</el-radio>
+          </el-radio-group>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -1906,7 +1918,7 @@ const violationList = ref([])
 // 聊天室管理
 const chatRoomList = ref([])
 const showCreateRoomDialog = ref(false)
-const newRoomForm = ref({ name: '', college: '' })
+const newRoomForm = ref({ name: '', college: '', roomLevel: 'FREE' })
 
 const loadViolationRecords = async (forceRefresh = false) => {
   if (violationList.value.length > 0 && !forceRefresh) return
@@ -1951,11 +1963,11 @@ const loadChatRooms = async () => {
 const handleCreateRoom = async () => {
   if (!newRoomForm.value.name.trim()) { ElMessage.warning('请输入房间名称'); return }
   try {
-    const res = await createRoomApi({ name: newRoomForm.value.name, college: newRoomForm.value.college || null })
+    const res = await createRoomApi({ name: newRoomForm.value.name, college: newRoomForm.value.college || null, roomLevel: newRoomForm.value.roomLevel || 'FREE' })
     if (res && res.code === 200) {
       ElMessage.success('创建成功')
       showCreateRoomDialog.value = false
-      newRoomForm.value = { name: '', college: '' }
+      newRoomForm.value = { name: '', college: '', roomLevel: 'FREE' }
       await loadChatRooms()
     }
   } catch { ElMessage.error('创建失败') }
