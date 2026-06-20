@@ -211,6 +211,7 @@ router.beforeEach(async (to, from, next) => {
     const token = localStorage.getItem(STORAGE_KEYS.TOKEN)
     let username = ''
     let flag = 0
+    let userInfo = {}
 
     try {
         // 第一步：读取 localStorage 中的用户信息字符串
@@ -219,7 +220,7 @@ router.beforeEach(async (to, from, next) => {
         // 第二步：只有字符串存在且非空时才解析
         if (userInfoStr && userInfoStr !== 'undefined' && userInfoStr !== 'null') {
             // 解析成 JavaScript 对象
-            const userInfo = JSON.parse(userInfoStr)
+            userInfo = JSON.parse(userInfoStr)
             // 第三步：安全读取 username 属性（加兜底）
             username = userInfo.username || ''
         }
