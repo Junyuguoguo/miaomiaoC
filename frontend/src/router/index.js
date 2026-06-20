@@ -122,6 +122,36 @@ const router = createRouter({
                 requiresAuth: true,
                 requiresFullscreen: true  // 自定义元信息，表示需要强制全屏
             }
+        },
+        // 在线聊天 - 聊天大厅
+        {
+            path: '/chat',
+            name: 'chatHub',
+            component: () => import('@/views/chat/ChatHub.vue'),
+            meta: {
+                requiresAuth: true,
+                title: '在线交流'
+            }
+        },
+        // 在线聊天 - 私聊
+        {
+            path: '/chat/private',
+            name: 'chatPrivate',
+            component: () => import('@/views/chat/ChatPage.vue'),
+            meta: {
+                requiresAuth: true,
+                title: '私聊'
+            }
+        },
+        // 在线聊天 - 群聊
+        {
+            path: '/chat/room',
+            name: 'chatRoom',
+            component: () => import('@/views/chat/ChatPage.vue'),
+            meta: {
+                requiresAuth: true,
+                title: '群聊'
+            }
         }
         // {
         //     path: '/user',
@@ -209,6 +239,13 @@ router.beforeEach(async (to, from, next) => {
 
     // 如果访问 teacher admin 需要单独 校验权限
     if(to.path === '/teacher' || to.path === '/admin'){
+        // 前端先检查角色，避免无权限请求发到后端
+        const roleId = userInfo.role_id || userInfo.roleId
+        if (!roleId || roleId <= 2) {
+            console.warn('前端角色校验失败，无权访问', to.path)
+            next('/exam')
+            return
+        }
         flag = 1
         console.log('进入特殊身份验证')
     }

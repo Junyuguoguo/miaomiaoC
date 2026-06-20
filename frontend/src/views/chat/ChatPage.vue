@@ -326,12 +326,10 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 0 20px;
-  height: 56px;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--app-border);
+  padding: 0 16px;
+  height: 50px;
+  background: #f5f5f5;
+  border-bottom: 1px solid #e8e8e8;
   flex-shrink: 0;
   z-index: 10;
 }
@@ -340,19 +338,18 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border: none;
-  border-radius: 10px;
+  border-radius: 6px;
   background: transparent;
-  color: var(--app-text);
+  color: #333;
   cursor: pointer;
-  transition: background 0.2s, color 0.2s;
+  transition: background 0.15s;
 }
 
 .header-back:hover {
-  background: var(--app-primary-soft);
-  color: var(--app-primary);
+  background: #e8e8e8;
 }
 
 .header-title {
@@ -360,7 +357,7 @@ onUnmounted(() => {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: var(--app-text);
+  color: #333;
 }
 
 .status-dot {
@@ -482,52 +479,38 @@ onUnmounted(() => {
   position: relative;
 }
 
-.bubble-peer {
-  background: #fff;
-  color: var(--app-text);
-  border-radius: 16px 16px 16px 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+/* === Bubbles (QQ-style) === */
+.bubble {
+  display: inline-block;
+  padding: 10px 14px;
+  font-size: 14px;
+  line-height: 1.6;
+  word-break: break-word;
+  text-align: left;
+  position: relative;
+  border-radius: 12px;
+  max-width: 100%;
 }
 
-.bubble-peer::before {
-  content: '';
-  position: absolute;
-  left: -8px;
-  bottom: 4px;
-  width: 0;
-  height: 0;
-  border-style: solid;
-  border-width: 0 8px 8px 0;
-  border-color: transparent #fff transparent transparent;
+.bubble-peer {
+  background: #fff;
+  color: #333;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .bubble-self {
-  background: var(--app-primary-soft, #e8f0ff);
-  color: var(--app-text, #102033);
-  border-radius: 16px 16px 4px 16px;
-  box-shadow: 0 1px 4px rgba(37, 99, 235, 0.08);
-  border: 1px solid rgba(37, 99, 235, 0.12);
+  background: #95EC69;
+  color: #333;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
-.bubble-self::after {
-  content: '';
-  position: absolute;
-  right: -8px;
-  bottom: 4px;
-  width: 0;
-  height: 0;
-  border-style: solid;
-  border-width: 0 0 8px 8px;
-  border-color: transparent transparent transparent #dce8f8;
-}
-
-/* --- Extension panel --- */
+/* Extension panel */
 .extension-panel {
   display: flex;
   justify-content: space-around;
-  padding: 24px 40px;
-  background: #fff;
-  border-top: 1px solid var(--app-border);
+  padding: 20px 40px;
+  background: #f5f5f5;
+  border-top: 1px solid #e8e8e8;
   animation: slideUp 250ms ease-out;
 }
 
@@ -543,21 +526,21 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
-  background: var(--app-primary-soft);
-  transition: transform 0.2s, box-shadow 0.2s;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid #eee;
+  transition: transform 0.15s;
 }
 
 .panel-icon:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+  transform: scale(1.05);
 }
 
 .panel-label {
   font-size: 12px;
-  color: var(--app-text-muted);
+  color: #999;
 }
 
 @keyframes slideUp {
@@ -565,17 +548,14 @@ onUnmounted(() => {
   to { transform: translateY(0); opacity: 1; }
 }
 
-/* --- Input bar --- */
+/* Input bar */
 .input-bar {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-top: 1px solid var(--app-border);
-  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.04);
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  background: #f5f5f5;
+  border-top: 1px solid #e8e8e8;
   flex-shrink: 0;
   z-index: 10;
 }
@@ -584,190 +564,139 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border: none;
-  border-radius: 12px;
-  background: var(--app-primary-soft);
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #ddd;
   cursor: pointer;
   flex-shrink: 0;
-  transition: background 0.2s;
+  transition: border-color 0.15s;
 }
 
 .image-btn:hover {
-  background: var(--app-primary);
-}
-
-.image-btn:hover svg path,
-.image-btn:hover svg rect,
-.image-btn:hover svg circle {
-  stroke: #fff;
+  border-color: #95EC69;
 }
 
 .msg-input {
   flex: 1;
-  height: 40px;
-  padding: 0 16px;
-  border: 1px solid var(--app-border);
-  border-radius: 20px;
-  background: var(--app-surface-muted);
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
   font-size: 14px;
-  color: var(--app-text);
+  color: #333;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  transition: border-color 0.2s;
 }
 
 .msg-input::placeholder {
-  color: var(--app-text-muted);
+  color: #bbb;
 }
 
 .msg-input:focus {
-  border-color: var(--app-primary);
-  background: #fff;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  border-color: #95EC69;
 }
 
 .send-btn {
-  height: 40px;
-  padding: 0 20px;
+  height: 38px;
+  padding: 0 18px;
   border: none;
-  border-radius: 20px;
-  background: var(--app-primary, #2563eb);
+  border-radius: 8px;
+  background: #07c160;
   color: #fff;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   flex-shrink: 0;
-  transition: opacity 0.2s, transform 0.15s;
-  animation: fadeIn 200ms ease;
+  transition: opacity 0.15s;
+  animation: fadeIn 150ms ease;
 }
 
 .send-btn:hover {
-  opacity: 0.9;
-}
-
-.send-btn:active {
-  transform: scale(0.96);
+  opacity: 0.85;
 }
 
 .plus-btn {
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border: none;
-  border-radius: 50%;
-  background: var(--app-surface-muted);
-  color: var(--app-text-muted);
-  font-size: 22px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #ddd;
+  color: #999;
+  font-size: 20px;
   cursor: pointer;
   flex-shrink: 0;
-  transition: transform 0.25s ease, background 0.2s;
+  transition: transform 0.2s, border-color 0.15s;
 }
 
 .plus-btn:hover {
-  background: var(--app-primary-soft);
-  color: var(--app-primary);
+  border-color: #95EC69;
+  color: #07c160;
 }
 
 .plus-btn.active {
   transform: rotate(45deg);
-  background: var(--app-primary-soft);
-  color: var(--app-primary);
+  border-color: #07c160;
+  color: #07c160;
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.9); }
+  from { opacity: 0; transform: scale(0.95); }
   to { opacity: 1; transform: scale(1); }
 }
 
-/* === Role Badges === */
+/* === Role Badges (subtle) === */
 .role-badge {
   display: inline-block;
   font-size: 10px;
-  padding: 1px 6px;
-  border-radius: 8px;
-  font-weight: 700;
-  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 3px;
+  font-weight: 500;
+  margin-left: 5px;
   vertical-align: middle;
-  letter-spacing: 0.3px;
+  border-left: 2px solid;
+  background: transparent;
 }
 
 .vip-badge {
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  color: #fff;
+  color: #d48806;
+  border-left-color: #faad14;
 }
 
 .teacher-badge {
-  background: linear-gradient(135deg, #10b981, #059669);
-  color: #fff;
+  color: #0891b2;
+  border-left-color: #06b6d4;
 }
 
 .admin-badge {
-  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
-  color: #fff;
+  color: #7c3aed;
+  border-left-color: #8b5cf6;
 }
 
-/* === Role-Specific Bubbles (peer only) === */
+/* === Role Bubbles === */
 .bubble-vip.bubble-peer {
-  background: linear-gradient(135deg, #fffbeb, #fef3c7);
-  border: 1px solid #fbbf24;
-  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.12);
-}
-
-.bubble-vip.bubble-peer::before {
-  border-color: transparent #fef3c7 transparent transparent;
+  background: #fffbe6;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .bubble-teacher.bubble-peer {
-  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
-  border: 1px solid #34d399;
-  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.12);
-}
-
-.bubble-teacher.bubble-peer::before {
-  border-color: transparent #d1fae5 transparent transparent;
+  background: #e6fffb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .bubble-admin.bubble-peer {
-  background: linear-gradient(135deg, #f5f3ff, #ede9fe);
-  border: 1px solid #a78bfa;
-  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.12);
+  background: #f5f0ff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
-.bubble-admin.bubble-peer::before {
-  border-color: transparent #ede9fe transparent transparent;
-}
-
-/* === Role-Specific Bubbles (self) === */
-.bubble-vip.bubble-self {
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  color: #fff;
-  border: none;
-  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
-}
-
-.bubble-vip.bubble-self::after {
-  border-color: transparent transparent transparent #d97706;
-}
-
-.bubble-teacher.bubble-self {
-  background: linear-gradient(135deg, #10b981, #059669);
-  color: #fff;
-  border: none;
-  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
-}
-
-.bubble-teacher.bubble-self::after {
-  border-color: transparent transparent transparent #059669;
-}
-
+.bubble-vip.bubble-self,
+.bubble-teacher.bubble-self,
 .bubble-admin.bubble-self {
-  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
-  color: #fff;
-  border: none;
-  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.2);
-}
-
-.bubble-admin.bubble-self::after {
-  border-color: transparent transparent transparent #7c3aed;
+  background: #95EC69;
+  color: #333;
 }
 </style>
