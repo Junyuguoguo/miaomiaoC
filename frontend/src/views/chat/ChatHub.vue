@@ -38,6 +38,7 @@
                 <span v-if="isRoomMuted(room.id)" class="room-icon mute-icon" title="免打扰">&#x1F507;</span>
               </span>
             </div>
+            <span v-if="room.roomLevel === 'VIP'" class="vip-tag">VIP</span>
             <span v-if="room.college" class="college-tag">{{ room.college }}</span>
             <span v-else class="college-tag all">全校</span>
           </div>
@@ -203,6 +204,12 @@
             <el-option label="自动化学院" value="自动化学院" />
           </el-select>
         </el-form-item>
+        <el-form-item label="房间类型">
+          <el-radio-group v-model="newRoom.roomLevel">
+            <el-radio value="FREE">普通（免费用户自动加入）</el-radio>
+            <el-radio value="VIP">VIP专属（需群号加入）</el-radio>
+          </el-radio-group>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="showCreateRoom = false">取消</el-button>
@@ -298,7 +305,7 @@ let searchTimer = null
 const rooms = ref([])
 const currentRoom = ref(null)
 const showCreateRoom = ref(false)
-const newRoom = ref({ name: '', college: '' })
+const newRoom = ref({ name: '', college: '', roomLevel: 'FREE' })
 let currentRoomSubId = null  // Track current WebSocket subscription ID
 
 // Pin/mute/join state
@@ -409,13 +416,13 @@ const handleCreateRoom = async () => {
     return
   }
   try {
-    const payload = { name: name }
+    const payload = { name: name, roomLevel: newRoom.value.roomLevel || 'FREE' }
     if (newRoom.value.college) payload.college = newRoom.value.college
     const res = await createRoom(payload)
     if (res && res.code === 200) {
       ElMessage.success('创建成功')
       showCreateRoom.value = false
-      newRoom.value = { name: '', college: '' }
+      newRoom.value = { name: '', college: '', roomLevel: 'FREE' }
       await loadRooms()
     } else {
       ElMessage.error(res?.message || '创建失败')
@@ -887,6 +894,18 @@ onUnmounted(() => {
 .college-tag.all {
   background: var(--app-surface-muted, #e5e7eb);
   color: var(--app-text-muted);
+}
+
+.vip-tag {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-left: 6px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+  letter-spacing: 0.5px;
 }
 
 .add-room-btn {
