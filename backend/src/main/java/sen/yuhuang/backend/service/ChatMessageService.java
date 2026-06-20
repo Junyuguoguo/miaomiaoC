@@ -421,12 +421,13 @@ public class ChatMessageService {
                 chatRoomRepository.save(room);
             }
         }
+        // Auto-create default public room if none exist
+        if (rooms.isEmpty()) {
+            ChatRoom defaultRoom = createRoom("综合交流大厅", "全校师生自由交流", null, 1L, "FREE");
+            rooms.add(defaultRoom);
+        }
         return rooms;
     }
-
-    /**
-     * 创建聊天室
-     */
     @Transactional
     public ChatRoom createRoom(String name, String description, String college, Long creatorId, String roomLevel) {
         ChatRoom room = new ChatRoom();
