@@ -31,6 +31,12 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
     List<ChatRoom> findVisibleFreeRooms(@Param("college") String college);
 
     /**
+     * 查询所有免费房间（VIP用户可见）
+     */
+    @Query("SELECT r FROM ChatRoom r WHERE r.roomLevel = 'FREE' ORDER BY r.id ASC")
+    List<ChatRoom> findAllFreeRooms();
+
+    /**
      * 查询所有房间（管理员用）
      */
     @Query("SELECT r FROM ChatRoom r ORDER BY r.id ASC")

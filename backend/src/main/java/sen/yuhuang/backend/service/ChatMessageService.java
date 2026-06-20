@@ -386,6 +386,19 @@ public class ChatMessageService {
         // 管理员/教师可以看到所有房间
         if (user.getRoleId() != null && user.getRoleId() >= 3) {
             rooms = chatRoomRepository.findAllRooms();
+        } else if (user.getRoleId() != null && user.getRoleId() == 2) {
+            // VIP用户：可以看到所有免费房间 + 已加入的VIP房间
+            rooms = new ArrayList<>(chatRoomRepository.findAllFreeRooms());
+            List<Long> joinedRoomIds = chatRoomMemberRepository.findByUserId(userId)
+                    .stream().map(ChatRoomMember::getRoomId).collect(Collectors.toList());
+            if (!joinedRoomIds.isEmpty()) {
+                List<ChatRoom> joinedRooms = chatRoomRepository.findByIdIn(joinedRoomIds);
+                for (ChatRoom r : joinedRooms) {
+                    if (!rooms.stream().anyMatch(x -> x.getId().equals(r.getId()))) {
+                        rooms.add(r);
+                    }
+                }
+            }
         } else {
             // 免费房间：根据学院过滤
             rooms = new ArrayList<>(chatRoomRepository.findVisibleFreeRooms(user.getCollege()));
