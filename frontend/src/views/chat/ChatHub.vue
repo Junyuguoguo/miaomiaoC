@@ -389,6 +389,17 @@ const loadRooms = async () => {
     const res = await getRooms()
     if (res && res.code === 200) {
       rooms.value = res.data || []
+      // If no rooms exist, create a default public room
+      if (rooms.value.length === 0) {
+        try {
+          const createRes = await createRoom({ name: '综合交流大厅', roomLevel: 'FREE' })
+          if (createRes && createRes.code === 200) {
+            rooms.value = [createRes.data]
+          }
+        } catch (e) {
+          console.error('创建默认聊天室失败:', e)
+        }
+      }
       // Load room settings after rooms are loaded
       await loadRoomSettings()
       // Auto-select first room if none selected
