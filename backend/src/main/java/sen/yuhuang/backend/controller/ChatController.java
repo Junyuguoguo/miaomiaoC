@@ -137,10 +137,11 @@ public class ChatController {
         String name = body.get("name");
         String college = body.get("college");
         String description = body.get("description");
+        String roomLevel = body.get("roomLevel");
         if (name == null || name.trim().isEmpty()) {
             return Result.badRequest("房间名不能为空");
         }
-        return Result.ok(chatMessageService.createRoom(name, description, college, currentUser.getId()));
+        return Result.ok(chatMessageService.createRoom(name, description, college, currentUser.getId(), roomLevel));
     }
 
     @DeleteMapping("/rooms/{roomId}")
@@ -162,6 +163,12 @@ public class ChatController {
         ChatRoom room = chatMessageService.findByGroupNumber(groupNumber);
         if (room == null) {
             return Result.badRequest("群号不存在");
+        }
+        // VIP房间需要VIP权限
+        if ("VIP".equals(room.getRoomLevel())) {
+            if (currentUser.getVipExpireTime() == null || currentUser.getVipExpireTime().isBefore(java.time.LocalDateTime.now())) {
+                return Result.badRequest("该群为VIP专属群，请先开通VIP");
+            }
         }
         return Result.ok(room);
     }

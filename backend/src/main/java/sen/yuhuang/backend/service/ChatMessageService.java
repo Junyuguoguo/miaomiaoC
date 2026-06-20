@@ -383,20 +383,29 @@ public class ChatMessageService {
         User user = userRepository.findById(userId).orElse(null);
         if (user == null) return List.of();
         List<ChatRoom> rooms;
-        // 管理员可以看到所有房间
+        // 管理员/教师可以看到所有房间
         if (user.getRoleId() != null && user.getRoleId() >= 3) {
             rooms = chatRoomRepository.findAllRooms();
         } else {
-            // 普通用户只能看到全校房间和本学院房间
-            rooms = chatRoomRepository.findVisibleRooms(user.getCollege());
+            // 免费房间：根据学院过滤
+            rooms = new ArrayList<>(chatRoomRepository.findVisibleFreeRooms(user.getCollege()));
+            // VIP房间：只显示用户已加入的
+            List<Long> joinedRoomIds = chatRoomMemberRepository.findByUserId(userId)
+                    .stream().map(ChatRoomMember::getRoomId).collect(Collectors.toList());
+            if (!joinedRoomIds.isEmpty()) {
+                List<ChatRoom> joinedRooms = chatRoomRepository.findByIdIn(joinedRoomIds);
+                for (ChatRoom r : joinedRooms) {
+                    if ("VIP".equals(r.getRoomLevel()) && !rooms.stream().anyMatch(x -> x.getId().equals(r.getId()))) {
+                        rooms.add(r);
+                    }
+                }
+            }
         }
         // Auto-generate group numbers for rooms that don't have one
-        boolean updated = false;
         for (ChatRoom room : rooms) {
             if (room.getGroupNumber() == null || room.getGroupNumber().isEmpty()) {
                 room.setGroupNumber(generateGroupNumber());
                 chatRoomRepository.save(room);
-                updated = true;
             }
         }
         return rooms;
@@ -406,13 +415,14 @@ public class ChatMessageService {
      * 创建聊天室
      */
     @Transactional
-    public ChatRoom createRoom(String name, String description, String college, Long creatorId) {
+    public ChatRoom createRoom(String name, String description, String college, Long creatorId, String roomLevel) {
         ChatRoom room = new ChatRoom();
         room.setRoomName(name);
         room.setDescription(description);
         room.setCollege(college);
         room.setCreatorId(creatorId);
         room.setRoomType("PUBLIC");
+        room.setRoomLevel(roomLevel != null ? roomLevel : "FREE");
         room.setCurrentMembers(0);
         room.setIsActive(true);
         room.setGroupNumber(generateGroupNumber());

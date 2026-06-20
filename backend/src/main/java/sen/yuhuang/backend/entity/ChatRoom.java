@@ -80,6 +80,12 @@ public class ChatRoom {
     private String groupNumber;
 
     /**
+     * 房间等级：FREE-免费普通房间, VIP-VIP专属房间
+     */
+    @Column(name = "room_level", length = 10)
+    private String roomLevel = "FREE";
+
+    /**
      * 更新时间
      */
     @Column(name = "update_time")
