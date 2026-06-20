@@ -17,16 +17,27 @@
       <div class="left-panel">
         <!-- Room section -->
         <div class="room-section">
-          <h3 class="section-title">聊天大厅</h3>
-          <div v-if="rooms.length === 0" class="empty-hint">暂无聊天室</div>
+          <div class="section-header">
+            <h3 class="section-title">聊天大厅</h3>
+            <button class="join-room-btn" @click="showJoinDialog = true">加入群聊</button>
+          </div>
+          <div v-if="sortedRooms.length === 0" class="empty-hint">暂无聊天室</div>
           <div
-            v-for="room in rooms"
+            v-for="(room, idx) in sortedRooms"
             :key="room.id"
             class="room-card"
             :class="{ active: currentRoom?.id === room.id }"
+            :style="{ animationDelay: idx * 40 + 'ms' }"
             @click="selectRoom(room)"
+            @contextmenu="openContextMenu($event, room)"
           >
-            <span class="room-name">{{ room.roomName || room.name }}</span>
+            <div class="room-card-left">
+              <span class="room-name">{{ room.roomName || room.name }}</span>
+              <span class="room-icons">
+                <span v-if="isRoomPinned(room.id)" class="room-icon pin-icon" title="已置顶">&#x1F4CC;</span>
+                <span v-if="isRoomMuted(room.id)" class="room-icon mute-icon" title="免打扰">&#x1F507;</span>
+              </span>
+            </div>
             <span v-if="room.college" class="college-tag">{{ room.college }}</span>
             <span v-else class="college-tag all">全校</span>
           </div>
@@ -85,11 +96,33 @@
       <!-- Right panel -->
       <div class="right-panel">
         <div class="room-header">
-          <span>{{ currentRoom?.roomName || currentRoom?.name || '综合交流大厅' }}</span>
-          <span class="connection-badge room-badge" :class="connected ? 'connected' : 'disconnected'">
-            <span class="badge-dot"></span>
-            {{ connected ? '已连接' : '未连接' }}
-          </span>
+          <div class="room-header-left">
+            <span class="room-header-name">{{ currentRoom?.roomName || currentRoom?.name || '综合交流大厅' }}</span>
+            <span v-if="currentRoom?.groupNumber" class="group-number-display">
+              群号: {{ currentRoom.groupNumber }}
+              <button class="copy-gn-btn" @click="copyGroupNumber" title="复制群号">复制</button>
+            </span>
+          </div>
+          <div class="room-header-right">
+            <button
+              v-if="currentRoom"
+              class="header-icon-btn"
+              :class="{ active: isRoomPinned(currentRoom.id) }"
+              @click="handleTogglePin(currentRoom.id)"
+              :title="isRoomPinned(currentRoom.id) ? '取消置顶' : '置顶'"
+            >&#x1F4CC;</button>
+            <button
+              v-if="currentRoom"
+              class="header-icon-btn"
+              :class="{ active: isRoomMuted(currentRoom.id) }"
+              @click="handleToggleMute(currentRoom.id)"
+              :title="isRoomMuted(currentRoom.id) ? '取消免打扰' : '免打扰'"
+            >&#x1F507;</button>
+            <span class="connection-badge room-badge" :class="connected ? 'connected' : 'disconnected'">
+              <span class="badge-dot"></span>
+              {{ connected ? '已连接' : '未连接' }}
+            </span>
+          </div>
         </div>
 
         <div ref="messageListRef" class="message-list">
@@ -176,6 +209,44 @@
         <el-button type="primary" @click="handleCreateRoom">创建</el-button>
       </template>
     </el-dialog>
+
+    <!-- Join by group number dialog -->
+    <el-dialog v-model="showJoinDialog" title="加入群聊" width="400px" @close="joinGroupNumber = ''">
+      <div class="join-dialog-body">
+        <p class="join-hint">输入群号加入对应的聊天室</p>
+        <el-input
+          v-model="joinGroupNumber"
+          placeholder="请输入6位群号"
+          maxlength="6"
+          clearable
+          @keydown.enter="handleJoinGroup"
+        />
+      </div>
+      <template #footer>
+        <el-button @click="showJoinDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleJoinGroup">搜索并加入</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- Context menu -->
+    <div
+      v-if="showContextMenu && contextMenuRoom"
+      class="context-menu-overlay"
+      @click="closeContextMenu"
+      @contextmenu.prevent="closeContextMenu"
+    >
+      <div
+        class="context-menu"
+        :style="{ left: contextMenuPos.x + 'px', top: contextMenuPos.y + 'px' }"
+      >
+        <div class="context-menu-item" @click="handleTogglePin(contextMenuRoom.id); closeContextMenu()">
+          {{ isRoomPinned(contextMenuRoom.id) ? '取消置顶' : '置顶' }}
+        </div>
+        <div class="context-menu-item" @click="handleToggleMute(contextMenuRoom.id); closeContextMenu()">
+          {{ isRoomMuted(contextMenuRoom.id) ? '取消免打扰' : '免打扰' }}
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -191,7 +262,11 @@ import {
   createRoom,
   getContactDetails,
   searchUsers,
-  joinRoom
+  joinRoom,
+  joinByGroupNumber,
+  togglePinRoom,
+  toggleMuteRoom,
+  getRoomSettings
 } from '@/api/chat'
 import chatWebSocket from '@/utils/chat-websocket'
 import dayjs from 'dayjs'
@@ -226,8 +301,38 @@ const showCreateRoom = ref(false)
 const newRoom = ref({ name: '', college: '' })
 let currentRoomSubId = null  // Track current WebSocket subscription ID
 
+// Pin/mute/join state
+const roomSettings = ref([])
+const showJoinDialog = ref(false)
+const joinGroupNumber = ref('')
+const contextMenuRoom = ref(null)
+const showContextMenu = ref(false)
+const contextMenuPos = ref({ x: 0, y: 0 })
+
 const currentUserId = computed(() => userStore.getUserId)
 const isTeacher = computed(() => Number(userStore.getUserRoleId) >= 3)
+
+// Sorted rooms: pinned first, then by id
+const sortedRooms = computed(() => {
+  const list = [...rooms.value]
+  list.sort((a, b) => {
+    const aPinned = isRoomPinned(a.id) ? 1 : 0
+    const bPinned = isRoomPinned(b.id) ? 1 : 0
+    if (bPinned !== aPinned) return bPinned - aPinned
+    return a.id - b.id
+  })
+  return list
+})
+
+const isRoomPinned = (roomId) => {
+  const s = roomSettings.value.find(rs => rs.roomId === roomId)
+  return s ? Boolean(s.isPinned) : false
+}
+
+const isRoomMuted = (roomId) => {
+  const s = roomSettings.value.find(rs => rs.roomId === roomId)
+  return s ? Boolean(s.isMuted) : false
+}
 
 // Time helpers
 const formatTimeFull = (time) => {
@@ -262,9 +367,11 @@ const loadRooms = async () => {
     const res = await getRooms()
     if (res && res.code === 200) {
       rooms.value = res.data || []
+      // Load room settings after rooms are loaded
+      await loadRoomSettings()
       // Auto-select first room if none selected
       if (rooms.value.length > 0 && !currentRoom.value) {
-        await selectRoom(rooms.value[0])
+        await selectRoom(sortedRooms.value[0])
       }
     }
   } catch (e) {
@@ -316,6 +423,102 @@ const handleCreateRoom = async () => {
   } catch (e) {
     console.error('创建聊天室失败:', e)
     ElMessage.error('创建失败')
+  }
+}
+
+// ──────────────── Room settings (pin/mute) ────────────────
+
+const loadRoomSettings = async () => {
+  try {
+    const res = await getRoomSettings()
+    if (res && res.code === 200) {
+      roomSettings.value = res.data || []
+    }
+  } catch (e) {
+    console.error('加载房间设置失败:', e)
+  }
+}
+
+const handleTogglePin = async (roomId) => {
+  try {
+    const res = await togglePinRoom(roomId)
+    if (res && res.code === 200) {
+      await loadRoomSettings()
+      ElMessage.success(isRoomPinned(roomId) ? '已置顶' : '已取消置顶')
+    }
+  } catch (e) {
+    console.error('置顶操作失败:', e)
+    ElMessage.error('操作失败')
+  }
+}
+
+const handleToggleMute = async (roomId) => {
+  try {
+    const res = await toggleMuteRoom(roomId)
+    if (res && res.code === 200) {
+      await loadRoomSettings()
+      ElMessage.success(isRoomMuted(roomId) ? '已设为免打扰' : '已取消免打扰')
+    }
+  } catch (e) {
+    console.error('免打扰操作失败:', e)
+    ElMessage.error('操作失败')
+  }
+}
+
+const openContextMenu = (e, room) => {
+  e.preventDefault()
+  contextMenuRoom.value = room
+  contextMenuPos.value = { x: e.clientX, y: e.clientY }
+  showContextMenu.value = true
+}
+
+const closeContextMenu = () => {
+  showContextMenu.value = false
+  contextMenuRoom.value = null
+}
+
+// ──────────────── Join by group number ────────────────
+
+const handleJoinGroup = async () => {
+  const num = joinGroupNumber.value.trim()
+  if (!num) {
+    ElMessage.warning('请输入群号')
+    return
+  }
+  try {
+    const res = await joinByGroupNumber(num)
+    if (res && res.code === 200 && res.data) {
+      const room = res.data
+      // Check if already in room list
+      if (!rooms.value.some(r => r.id === room.id)) {
+        rooms.value.push(room)
+        // Auto join the room via API
+        await joinRoom(room.id).catch(() => {})
+      }
+      showJoinDialog.value = false
+      joinGroupNumber.value = ''
+      await selectRoom(room)
+      ElMessage.success('已加入群聊')
+    } else {
+      ElMessage.error(res?.message || '群号不存在')
+    }
+  } catch (e) {
+    console.error('加入群聊失败:', e)
+    ElMessage.error('加入失败')
+  }
+}
+
+const copyGroupNumber = async () => {
+  const gn = currentRoom.value?.groupNumber
+  if (!gn) {
+    ElMessage.warning('该房间暂无群号')
+    return
+  }
+  try {
+    await navigator.clipboard.writeText(gn)
+    ElMessage.success('群号已复制')
+  } catch {
+    ElMessage.info(`群号: ${gn}`)
   }
 }
 
@@ -579,11 +782,35 @@ onUnmounted(() => {
   border-bottom: 1px solid var(--app-border);
 }
 
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
 .room-section .section-title {
   font-size: 14px;
   font-weight: 600;
   color: var(--app-text);
-  margin-bottom: 10px;
+  margin: 0;
+}
+
+.join-room-btn {
+  font-size: 12px;
+  padding: 4px 10px;
+  border: 1px solid var(--app-primary, #2563eb);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--app-primary, #2563eb);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  font-weight: 500;
+}
+
+.join-room-btn:hover {
+  background: var(--app-primary, #2563eb);
+  color: #fff;
 }
 
 .room-card {
@@ -593,18 +820,47 @@ onUnmounted(() => {
   padding: 10px 12px;
   border-radius: var(--app-radius, 8px);
   cursor: pointer;
-  transition: background 0.15s, transform 0.15s;
+  transition: background 0.15s, transform 0.2s, box-shadow 0.2s;
   margin-bottom: 4px;
+  animation: fadeInUp 300ms ease both;
+  border-left: 3px solid transparent;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .room-card:hover {
   background: var(--app-primary-soft);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
 .room-card.active {
   background: var(--app-primary-soft, #e8f0ff);
-  border: 1px solid rgba(37, 99, 235, 0.2);
+  border-left: 3px solid var(--app-primary, #2563eb);
+}
+
+.room-card-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.room-icons {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.room-icon {
+  font-size: 12px;
+  opacity: 0.6;
+  line-height: 1;
 }
 
 .room-name {
@@ -785,8 +1041,81 @@ onUnmounted(() => {
   gap: 12px;
 }
 
-.room-header span:first-child {
+.room-header-left {
   flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.room-header-name {
+  font-size: 15px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-number-display {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--app-text-muted);
+  background: var(--app-surface-muted);
+  padding: 2px 8px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.copy-gn-btn {
+  font-size: 11px;
+  padding: 1px 6px;
+  border: 1px solid var(--app-border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--app-primary, #2563eb);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.copy-gn-btn:hover {
+  background: var(--app-primary-soft);
+}
+
+.room-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.header-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  opacity: 0.5;
+  transition: opacity 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.header-icon-btn:hover {
+  opacity: 0.8;
+  background: var(--app-primary-soft);
+}
+
+.header-icon-btn.active {
+  opacity: 1;
+  border-color: var(--app-primary, #2563eb);
+  background: var(--app-primary-soft);
 }
 
 .room-badge {
@@ -1026,6 +1355,57 @@ onUnmounted(() => {
 .bubble-teacher {
   border: 2px solid #D4A843 !important;
   box-shadow: 0 2px 12px rgba(212, 168, 67, 0.2) !important;
+}
+
+/* --- Context menu --- */
+.context-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+}
+
+.context-menu {
+  position: fixed;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--app-border);
+  padding: 4px 0;
+  min-width: 120px;
+  z-index: 1001;
+  animation: contextFadeIn 150ms ease;
+}
+
+@keyframes contextFadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.context-menu-item {
+  padding: 8px 16px;
+  font-size: 13px;
+  color: var(--app-text);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.context-menu-item:hover {
+  background: var(--app-primary-soft);
+  color: var(--app-primary);
+}
+
+/* --- Join dialog --- */
+.join-dialog-body {
+  padding: 8px 0;
+}
+
+.join-hint {
+  font-size: 13px;
+  color: var(--app-text-muted);
+  margin-bottom: 12px;
 }
 
 /* --- Mobile responsive --- */

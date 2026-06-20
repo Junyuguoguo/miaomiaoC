@@ -259,7 +259,16 @@
               <el-input v-model="editForm.phone" placeholder="请输入手机号" />
             </el-form-item>
             <el-form-item label="报考院校" prop="school">
-              <el-input v-model="editForm.school" placeholder="请输入报考院校" />
+              <el-select v-model="editForm.school" placeholder="请选择报考院校" style="width: 100%;">
+                <el-option label="计算机学院" value="计算机学院" />
+                <el-option label="机械学院" value="机械学院" />
+                <el-option label="电子信息学院" value="电子信息学院" />
+                <el-option label="经济管理学院" value="经济管理学院" />
+                <el-option label="外国语学院" value="外国语学院" />
+                <el-option label="理学院" value="理学院" />
+                <el-option label="人文社科学院" value="人文社科学院" />
+                <el-option label="自动化学院" value="自动化学院" />
+              </el-select>
             </el-form-item>
             <el-form-item label="报考专业" prop="major">
               <el-input v-model="editForm.major" placeholder="请输入报考专业" />
@@ -1286,6 +1295,9 @@ const editFormRules = reactive({
   ],
   phone: [
     { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
+  ],
+  school: [
+    { required: true, message: '请选择报考院校', trigger: 'change' }
   ],
   email: [
     { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }

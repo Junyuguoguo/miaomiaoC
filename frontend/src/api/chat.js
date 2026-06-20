@@ -144,3 +144,31 @@ export function createRoom(data) {
 export function deleteRoom(roomId) {
     return request({ url: `/api/chat/rooms/${roomId}`, method: 'delete' })
 }
+
+/**
+ * 通过群号加入群聊
+ */
+export function joinByGroupNumber(groupNumber) {
+    return request({ url: `/api/chat/rooms/join/${groupNumber}`, method: 'get' })
+}
+
+/**
+ * 切换房间置顶状态
+ */
+export function togglePinRoom(roomId) {
+    return request({ url: `/api/chat/rooms/${roomId}/pin`, method: 'post' })
+}
+
+/**
+ * 切换房间免打扰状态
+ */
+export function toggleMuteRoom(roomId) {
+    return request({ url: `/api/chat/rooms/${roomId}/mute`, method: 'post' })
+}
+
+/**
+ * 获取用户房间设置（置顶/免打扰）
+ */
+export function getRoomSettings() {
+    return request({ url: '/api/chat/rooms/settings', method: 'get' })
+}
