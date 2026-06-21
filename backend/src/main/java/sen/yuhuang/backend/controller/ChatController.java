@@ -12,6 +12,7 @@ import sen.yuhuang.backend.entity.UserRoomSetting;
 import sen.yuhuang.backend.repository.UserRepository;
 import sen.yuhuang.backend.service.ChatMessageService;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -222,5 +223,68 @@ public class ChatController {
         User currentUser = getCurrentUser(request);
         List<UserRoomSetting> settings = chatMessageService.getUserRoomSettings(currentUser.getId());
         return Result.ok(settings);
+    }
+
+    /**
+     * 获取房间详情
+     */
+    @GetMapping("/rooms/{roomId}/detail")
+    public Result getRoomDetail(@PathVariable Long roomId) {
+        ChatRoom room = chatMessageService.findById(roomId);
+        if (room == null) return Result.badRequest("房间不存在");
+        return Result.ok(room);
+    }
+
+    /**
+     * 获取房间成员列表（含用户详情）
+     */
+    @GetMapping("/rooms/{roomId}/members")
+    public Result getRoomMembers(@PathVariable Long roomId) {
+        List<Map<String, Object>> members = chatMessageService.getRoomMembers(roomId);
+        return Result.ok(members);
+    }
+
+    /**
+     * 更新群公告（仅教师/管理员）
+     */
+    @PutMapping("/rooms/{roomId}/notice")
+    public Result updateRoomNotice(HttpServletRequest request, @PathVariable Long roomId, @RequestBody Map<String, String> body) {
+        User currentUser = getCurrentUser(request);
+        if (currentUser.getRoleId() == null || currentUser.getRoleId() < 3) {
+            return Result.badRequest("仅教师/管理员可修改群公告");
+        }
+        String notice = body.get("notice");
+        ChatRoom room = chatMessageService.updateRoomNotice(roomId, notice);
+        return Result.ok(room);
+    }
+
+    /**
+     * 获取当前用户在某房间的设置
+     */
+    @GetMapping("/rooms/{roomId}/user-setting")
+    public Result getUserRoomSetting(HttpServletRequest request, @PathVariable Long roomId) {
+        User currentUser = getCurrentUser(request);
+        UserRoomSetting setting = chatMessageService.getUserRoomSetting(currentUser.getId(), roomId);
+        if (setting == null) {
+            // 返回默认值
+            Map<String, Object> defaultSetting = new HashMap<>();
+            defaultSetting.put("isPinned", false);
+            defaultSetting.put("isMuted", false);
+            return Result.ok(defaultSetting);
+        }
+        return Result.ok(setting);
+    }
+
+    /**
+     * 保存当前用户在某房间的设置（置顶/免打扰）
+     */
+    @PutMapping("/rooms/{roomId}/user-setting")
+    public Result saveUserRoomSetting(HttpServletRequest request, @PathVariable Long roomId, @RequestBody Map<String, Boolean> body) {
+        User currentUser = getCurrentUser(request);
+        UserRoomSetting setting = chatMessageService.saveUserRoomSetting(
+                currentUser.getId(), roomId,
+                body.get("isPinned"),
+                body.get("isMuted"));
+        return Result.ok(setting);
     }
 }

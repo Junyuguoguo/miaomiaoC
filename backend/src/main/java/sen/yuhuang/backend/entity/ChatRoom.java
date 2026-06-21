@@ -90,4 +90,16 @@ public class ChatRoom {
      */
     @Column(name = "update_time")
     private LocalDateTime updateTime;
+
+    /**
+     * 群公告内容
+     */
+    @Column(name = "notice", length = 1000)
+    private String notice;
+
+    /**
+     * 公告更新时间
+     */
+    @Column(name = "notice_updated_at")
+    private LocalDateTime noticeUpdatedAt;
 }

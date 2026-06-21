@@ -24,22 +24,42 @@
         </div>
 
         <div
-          class="message-item"
-          :class="[msg.senderId === currentUserId ? 'message-self' : 'message-other', 'animate']"
-          :style="{ animationDelay: Math.min(idx * 30, 300) + 'ms' }"
+          class="message-row"
+          :class="msg.senderId === currentUserId ? 'self' : ''"
+          :style="{ animationDelay: Math.min(idx * 40, 400) + 'ms' }"
         >
-          <div class="message-avatar">
-            <el-avatar :size="42" class="avatar-img" :class="msg.senderId === currentUserId ? 'avatar-self' : 'avatar-peer'">
-              <img v-if="msg.senderAvatar" :src="fixAvatarUrl(msg.senderAvatar)" alt="avatar" />
-              <span v-else>{{ msg.senderName?.charAt(0) || 'U' }}</span>
-            </el-avatar>
-          </div>
-          <div class="message-body">
-            <div class="bubble" :class="getBubbleClass(msg)">
+          <img
+            class="msg-avatar"
+            :class="{ clickable: msg.senderId !== currentUserId }"
+            :src="fixAvatarUrl(msg.senderAvatar)"
+            alt="avatar"
+            @click="msg.senderId !== currentUserId && goPrivateChat(msg.senderId, msg.senderName)"
+          />
+          <div class="msg-body">
+            <div class="message-meta">
+              <span class="sender-name">{{ getSenderName(msg) }}</span>
               <span v-if="msg.senderRole === 4" class="role-badge admin-badge">管理员</span>
               <span v-else-if="msg.senderRole === 3" class="role-badge teacher-badge">教师</span>
-              <span v-else-if="msg.senderRole === 2" class="role-badge vip-badge">VIP</span>
+              <span v-else-if="msg.senderRole === 2" class="role-badge vip-badge">VIP学生</span>
+              <span class="level-badge">{{ getSenderLevel(msg) }}</span>
+              <span class="message-time">{{ formatMessageTime(msg.createTime) }}</span>
+            </div>
+            <div class="bubble" :class="getBubbleClass(msg)">
               {{ msg.content }}
+            </div>
+            <div class="message-actions">
+              <button
+                type="button"
+                class="message-action"
+                :class="{ active: isMessageLiked(msg) }"
+                @click="toggleMessageLike(msg)"
+              >
+                <span>赞</span>
+                <strong v-if="getMessageLikeCount(msg)">{{ getMessageLikeCount(msg) }}</strong>
+              </button>
+              <button type="button" class="message-action" @click="replyToMessage(msg)">
+                回复
+              </button>
             </div>
           </div>
         </div>
@@ -74,6 +94,7 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke="var(--app-primary)" stroke-width="1.8"/><circle cx="8.5" cy="8.5" r="1.5" fill="var(--app-primary)"/><path d="M21 15l-5-5L5 21" stroke="var(--app-primary)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
       <input
+        ref="messageInputRef"
         v-model="inputMessage"
         class="msg-input"
         placeholder="输入消息..."
@@ -96,15 +117,17 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed, reactive, onMounted, onUnmounted, nextTick } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import chatWebSocket from '@/utils/chat-websocket'
 import { getPrivateMessages, getRoomMessages, markAsRead, markAllAsRead } from '@/api/chat'
+import request from '@/utils/request'
 import dayjs from 'dayjs'
 
 const route = useRoute()
+const router = useRouter()
 const userStore = useUserStore()
 
 // State
@@ -114,13 +137,23 @@ const loadingMore = ref(false)
 const hasMore = ref(true)
 const currentPage = ref(0)
 const messageListRef = ref(null)
+const messageInputRef = ref(null)
 const connectionStatus = ref(false)
 const showPanel = ref(false)
+const likedMessageKeys = ref([])
+
+const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
 
 const fixAvatarUrl = (url) => {
-  if (!url) return ''
+  if (!url) return defaultAvatar
   if (url.startsWith('/uploads/')) return '/api/auth/avatar/' + url.split('/').pop()
   return url
+}
+
+const goPrivateChat = (userId, userName) => {
+  const query = { userId }
+  if (userName) query.userName = userName
+  router.push({ path: '/chat/private', query })
 }
 
 // Computed
@@ -165,6 +198,53 @@ const shouldShowTime = (idx) => {
   const prev = dayjs(messages.value[idx - 1].createTime)
   const curr = dayjs(messages.value[idx].createTime)
   return curr.diff(prev, 'minute') > 5
+}
+
+const getSenderName = (msg) => {
+  if (msg.senderId === currentUserId.value) return userStore.getUserName || msg.senderName || '我'
+  return msg.senderName || '匿名用户'
+}
+
+const getSenderLevel = (msg) => {
+  const level = msg.senderLevel || msg.level || msg.userLevel
+  if (level) return String(level).startsWith('LV.') ? level : `LV.${level}`
+  if (msg.senderRole === 4) return 'LV.9'
+  if (msg.senderRole === 3) return 'LV.8'
+  if (msg.senderRole === 2) return 'LV.6'
+  return 'LV.4'
+}
+
+const formatMessageTime = (time) => {
+  if (!time) return ''
+  return dayjs(time).format('HH:mm')
+}
+
+const getMessageKey = (msg) => String(msg.id || `${msg.senderId}-${msg.createTime}-${msg.content}`)
+
+const isMessageLiked = (msg) => likedMessageKeys.value.includes(getMessageKey(msg))
+
+const getMessageLikeCount = (msg) => {
+  const base = Number(msg.likeCount ?? msg.likes ?? 0)
+  return base + (isMessageLiked(msg) ? 1 : 0)
+}
+
+const toggleMessageLike = (msg) => {
+  const key = getMessageKey(msg)
+  if (likedMessageKeys.value.includes(key)) {
+    likedMessageKeys.value = likedMessageKeys.value.filter(item => item !== key)
+    return
+  }
+  likedMessageKeys.value = [...likedMessageKeys.value, key]
+}
+
+const replyToMessage = (msg) => {
+  const prefix = `回复 ${getSenderName(msg)}：`
+  inputMessage.value = inputMessage.value.trim()
+    ? `${inputMessage.value} ${prefix}`
+    : prefix
+  nextTick(() => {
+    messageInputRef.value?.focus?.()
+  })
 }
 
 // Load messages
@@ -426,20 +506,16 @@ onUnmounted(() => {
   border-radius: 10px;
 }
 
-/* --- Message item --- */
-.message-item {
+/* --- Message row --- */
+.message-row {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  margin-bottom: 14px;
-  opacity: 0;
+  margin-bottom: 18px;
+  animation: slideIn 300ms cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
 }
 
-.message-item.animate {
-  animation: slideIn 300ms cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-}
-
-.message-self {
+.message-row.self {
   flex-direction: row-reverse;
 }
 
@@ -448,60 +524,182 @@ onUnmounted(() => {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* --- Avatar --- */
-.message-avatar {
+.msg-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
   flex-shrink: 0;
+  box-shadow: 0 8px 18px rgba(40, 78, 142, 0.12);
 }
 
-.avatar-img {
+.msg-avatar.clickable {
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s;
+}
+
+.msg-avatar.clickable:hover {
+  opacity: 0.8;
+  transform: scale(1.08);
+}
+
+.msg-body {
+  max-width: min(76%, 760px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin: 0;
+}
+
+.message-row.self .msg-body {
+  align-items: flex-end;
+}
+
+.message-meta {
+  width: 100%;
+  min-height: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+  color: #64748b;
+  font-size: 12px;
   font-weight: 700;
-  font-size: 16px;
 }
 
-.avatar-peer {
-  border: 2px solid var(--app-primary-soft);
+.message-row.self .message-meta {
+  justify-content: flex-end;
 }
 
-.avatar-self {
-  border: 2px solid var(--app-primary);
+.sender-name {
+  display: inline-flex;
+  max-width: 160px;
+  margin: 0;
+  color: #627087;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.message-time {
+  margin-left: 4px;
+  color: #9aa8bc;
+  font-weight: 650;
 }
 
 /* --- Bubble --- */
-.message-body {
-  max-width: 60%;
-}
-
-.bubble {
-  padding: 10px 16px;
-  font-size: 14px;
-  line-height: 1.6;
-  word-break: break-word;
-  position: relative;
-}
-
-/* === Bubbles (QQ-style) === */
-.bubble {
-  display: inline-block;
-  padding: 10px 14px;
-  font-size: 14px;
-  line-height: 1.6;
+.bubble,
+.bubble-peer,
+.bubble-self,
+.bubble-vip.bubble-peer,
+.bubble-teacher.bubble-peer,
+.bubble-admin.bubble-peer,
+.bubble-vip.bubble-self,
+.bubble-teacher.bubble-self,
+.bubble-admin.bubble-self {
+  max-width: 100%;
+  min-height: 36px;
+  padding: 8px 16px;
+  border-radius: 15px;
+  color: #1f2a44;
+  background: #f4f7fb;
+  border: 1px solid #e2eaf5;
+  box-shadow: 0 8px 20px rgba(40, 78, 142, 0.08);
+  line-height: 1.62;
   word-break: break-word;
   text-align: left;
-  position: relative;
-  border-radius: 12px;
-  max-width: 100%;
 }
 
-.bubble-peer {
+.bubble-self,
+.bubble-vip.bubble-self,
+.bubble-teacher.bubble-self,
+.bubble-admin.bubble-self {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(135deg, #2f7df5, #7560f5);
+}
+
+/* --- Message actions --- */
+.message-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.message-row.self .message-actions {
+  justify-content: flex-end;
+}
+
+.message-action {
+  min-width: 42px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 10px;
+  border: 1px solid #cfe0f6;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  color: #687891;
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, color 160ms ease, background 160ms ease;
+}
+
+.message-action:hover {
+  color: var(--app-primary);
+  border-color: rgba(37, 99, 235, 0.36);
   background: #fff;
-  color: #333;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transform: translateY(-1px);
 }
 
-.bubble-self {
-  background: #95EC69;
-  color: #333;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+.message-action.active {
+  color: var(--app-primary);
+  border-color: rgba(37, 99, 235, 0.42);
+  background: var(--app-primary-soft);
+}
+
+.message-action strong {
+  font-size: 12px;
+}
+
+/* --- Role Badges --- */
+.level-badge,
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 18px;
+  font-weight: 850;
+  margin-left: 0;
+  vertical-align: baseline;
+}
+
+.level-badge {
+  color: #4672f6;
+  background: #e8efff;
+}
+
+.vip-badge {
+  color: #d97706;
+  background: #fff4d6;
+}
+
+.teacher-badge {
+  color: #0891b2;
+  background: #dff7fb;
+}
+
+.admin-badge {
+  color: #7c3aed;
+  background: #f0e8ff;
 }
 
 /* Extension panel */
@@ -647,56 +845,5 @@ onUnmounted(() => {
 @keyframes fadeIn {
   from { opacity: 0; transform: scale(0.95); }
   to { opacity: 1; transform: scale(1); }
-}
-
-/* === Role Badges (subtle) === */
-.role-badge {
-  display: inline-block;
-  font-size: 10px;
-  padding: 0 5px;
-  border-radius: 3px;
-  font-weight: 500;
-  margin-left: 5px;
-  vertical-align: middle;
-  border-left: 2px solid;
-  background: transparent;
-}
-
-.vip-badge {
-  color: #d48806;
-  border-left-color: #faad14;
-}
-
-.teacher-badge {
-  color: #0891b2;
-  border-left-color: #06b6d4;
-}
-
-.admin-badge {
-  color: #7c3aed;
-  border-left-color: #8b5cf6;
-}
-
-/* === Role Bubbles === */
-.bubble-vip.bubble-peer {
-  background: #fffbe6;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-}
-
-.bubble-teacher.bubble-peer {
-  background: #e6fffb;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-}
-
-.bubble-admin.bubble-peer {
-  background: #f5f0ff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-}
-
-.bubble-vip.bubble-self,
-.bubble-teacher.bubble-self,
-.bubble-admin.bubble-self {
-  background: #95EC69;
-  color: #333;
 }
 </style>

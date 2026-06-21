@@ -176,3 +176,17 @@ export function toggleMuteRoom(roomId) {
 export function getRoomSettings() {
     return request({ url: '/api/chat/rooms/settings', method: 'get' })
 }
+
+/**
+ * 获取群成员列表
+ */
+export function getRoomMembers(roomId) {
+    return request({ url: `/api/chat/rooms/${roomId}/members`, method: 'get' })
+}
+
+/**
+ * 更新群公告
+ */
+export function updateRoomNotice(roomId, notice) {
+    return request({ url: `/api/chat/rooms/${roomId}/notice`, method: 'put', data: { notice } })
+}

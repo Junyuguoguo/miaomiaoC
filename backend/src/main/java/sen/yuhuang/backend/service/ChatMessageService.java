@@ -501,6 +501,60 @@ public class ChatMessageService {
     }
 
     /**
+     * 获取用户在某房间的设置
+     */
+    public UserRoomSetting getUserRoomSetting(Long userId, Long roomId) {
+        return userRoomSettingRepository.findByUserIdAndRoomId(userId, roomId).orElse(null);
+    }
+
+    /**
+     * 保存用户房间设置（置顶/免打扰）
+     */
+    public UserRoomSetting saveUserRoomSetting(Long userId, Long roomId, Boolean pinned, Boolean muted) {
+        UserRoomSetting setting = userRoomSettingRepository.findByUserIdAndRoomId(userId, roomId)
+                .orElse(new UserRoomSetting());
+        setting.setUserId(userId);
+        setting.setRoomId(roomId);
+        if (pinned != null) setting.setIsPinned(pinned);
+        if (muted != null) setting.setIsMuted(muted);
+        return userRoomSettingRepository.save(setting);
+    }
+
+    /**
+     * 获取群成员列表（含用户详情）
+     */
+    public List<Map<String, Object>> getRoomMembers(Long roomId) {
+        List<ChatRoomMember> members = chatRoomMemberRepository.findByRoomId(roomId);
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (ChatRoomMember member : members) {
+            User user = userRepository.findById(member.getUserId()).orElse(null);
+            if (user == null) continue;
+            Map<String, Object> item = new HashMap<>();
+            item.put("userId", user.getId());
+            item.put("username", user.getUsername());
+            item.put("nickname", user.getRealName() != null ? user.getRealName() : user.getUsername());
+            item.put("avatar", user.getAvatar());
+            item.put("roleId", user.getRoleId());
+            item.put("college", user.getCollege());
+            item.put("roomRole", member.getRole());
+            item.put("joinTime", member.getJoinTime());
+            result.add(item);
+        }
+        return result;
+    }
+
+    /**
+     * 更新群公告
+     */
+    public ChatRoom updateRoomNotice(Long roomId, String notice) {
+        ChatRoom room = chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new RuntimeException("房间不存在"));
+        room.setNotice(notice);
+        room.setNoticeUpdatedAt(LocalDateTime.now());
+        return chatRoomRepository.save(room);
+    }
+
+    /**
      * 清除单聊消息缓存
      */
     private void clearMessageCache(Long userId1, Long userId2) {

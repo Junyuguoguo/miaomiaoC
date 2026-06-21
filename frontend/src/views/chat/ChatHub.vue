@@ -152,14 +152,30 @@
                 @click="msg.senderId !== currentUserId && goPrivateChat(msg.senderId, msg.senderName)"
               />
               <div class="msg-body">
-                <span v-if="msg.senderId !== currentUserId" class="sender-name">
-                  {{ msg.senderName || '匿名用户' }}
+                <div class="message-meta">
+                  <span class="sender-name">{{ getSenderName(msg) }}</span>
                   <span v-if="msg.senderRole === 4" class="role-badge admin-badge">管理员</span>
                   <span v-else-if="msg.senderRole === 3" class="role-badge teacher-badge">教师</span>
-                  <span v-else-if="msg.senderRole === 2" class="role-badge vip-badge">VIP</span>
-                </span>
+                  <span v-else-if="msg.senderRole === 2" class="role-badge vip-badge">VIP学生</span>
+                  <span class="level-badge">{{ getSenderLevel(msg) }}</span>
+                  <span class="message-time">{{ formatMessageTime(msg.createTime) }}</span>
+                </div>
                 <div class="bubble" :class="getBubbleClass(msg)">
                   {{ msg.content }}
+                </div>
+                <div class="message-actions">
+                  <button
+                    type="button"
+                    class="message-action"
+                    :class="{ active: isMessageLiked(msg) }"
+                    @click="toggleMessageLike(msg)"
+                  >
+                    <span>赞</span>
+                    <strong v-if="getMessageLikeCount(msg)">{{ getMessageLikeCount(msg) }}</strong>
+                  </button>
+                  <button type="button" class="message-action" @click="replyToMessage(msg)">
+                    回复
+                  </button>
                 </div>
               </div>
             </div>
@@ -169,6 +185,7 @@
         <!-- Input bar -->
         <div class="input-bar">
           <input
+            ref="messageInputRef"
             v-model="inputMessage"
             class="msg-input"
             placeholder="输入消息，按 Enter 发送..."
@@ -191,7 +208,7 @@
         <section class="info-card room-profile-card">
           <div class="info-card-header">
             <h3>群组信息</h3>
-            <button type="button" class="panel-icon-btn" title="更多设置">⌘</button>
+            <button type="button" class="panel-icon-btn" title="打开群设置" @click="openRoomSettings">设置</button>
           </div>
           <div class="room-avatar-large" aria-hidden="true">•••</div>
           <h2>{{ roomDisplayName }}</h2>
@@ -218,14 +235,14 @@
         <section class="info-card">
           <div class="info-card-header">
             <h3>群成员</h3>
-            <button type="button" class="info-link-btn">查看更多</button>
+            <button type="button" class="info-link-btn" @click="openMembersDialog">查看更多</button>
           </div>
           <div class="member-preview">
             <img
               v-for="contact in memberPreview"
               :key="contact.userId || contact.id"
               :src="fixAvatarUrl(contact.avatar)"
-              :alt="contact.username || contact.realName || '成员头像'"
+              :alt="contact.nickname || contact.username || '成员头像'"
             />
             <span v-if="memberPreview.length === 0" class="empty-inline">暂无成员预览</span>
           </div>
@@ -239,18 +256,21 @@
         <section class="info-card">
           <div class="info-card-header">
             <h3>群公告</h3>
-            <button type="button" class="info-link-btn">编辑</button>
+            <button type="button" class="info-link-btn" @click="openNoticeDialog">
+              {{ canManageRoom ? '编辑' : '查看' }}
+            </button>
           </div>
           <div class="notice-box">
             <span class="notice-pin">置顶</span>
-            <p>请文明交流，讨论题目思路时尽量说明题号、语言和报错信息。</p>
-            <small>发布于 {{ dayjs().format('YYYY-MM-DD HH:mm') }}</small>
+            <p>{{ currentNoticeText }}</p>
+            <small>发布于 {{ currentNoticeTime }}</small>
           </div>
         </section>
 
         <section class="info-card">
           <div class="info-card-header">
             <h3>群设置</h3>
+            <button type="button" class="info-link-btn" @click="openRoomSettings">打开设置</button>
           </div>
           <button
             v-if="currentRoom"
@@ -323,6 +343,115 @@
       </template>
     </el-dialog>
 
+    <!-- Member preview dialog -->
+    <el-dialog v-model="showMembersDialog" title="群成员" width="560px" class="chat-soft-dialog">
+      <div class="member-dialog-list">
+        <div
+          v-for="member in memberDialogList"
+          :key="member.userId || member.id"
+          class="member-dialog-item"
+        >
+          <img :src="fixAvatarUrl(member.avatar)" :alt="member.nickname || member.username || '成员头像'" />
+          <div>
+            <strong>{{ member.nickname || member.username || '匿名成员' }}</strong>
+            <span>{{ getMemberRoleText(member) }}</span>
+          </div>
+        </div>
+        <p v-if="memberDialogList.length === 0" class="dialog-empty-text">暂无可展示成员</p>
+      </div>
+      <template #footer>
+        <el-button @click="showMembersDialog = false">关闭</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- Announcement dialog -->
+    <el-dialog
+      v-model="showNoticeDialog"
+      :title="canManageRoom ? '编辑群公告' : '查看群公告'"
+      width="520px"
+      class="chat-soft-dialog"
+    >
+      <div class="notice-dialog-body">
+        <el-input
+          v-model="noticeDraft"
+          type="textarea"
+          :rows="5"
+          maxlength="120"
+          show-word-limit
+          :disabled="!canManageRoom"
+          placeholder="请输入群公告"
+        />
+        <p class="permission-hint">
+          {{ canManageRoom ? '公告将保存到服务器，所有成员可见。' : '只有教师和管理员可以编辑群公告。' }}
+        </p>
+      </div>
+      <template #footer>
+        <el-button @click="showNoticeDialog = false">{{ canManageRoom ? '取消' : '关闭' }}</el-button>
+        <el-button v-if="canManageRoom" type="primary" @click="saveNoticeDraft">保存公告</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- Room settings dialog -->
+    <el-dialog v-model="showRoomSettingsDialog" title="群设置" width="560px" class="chat-soft-dialog">
+      <div class="settings-dialog-body">
+        <section class="settings-dialog-section">
+          <h4>我的聊天设置</h4>
+          <button
+            v-if="currentRoom"
+            type="button"
+            class="setting-row dialog-setting-row"
+            @click="handleTogglePin(currentRoom.id)"
+          >
+            <span>置顶聊天</span>
+            <i :class="{ active: isRoomPinned(currentRoom.id) }"></i>
+          </button>
+          <button
+            v-if="currentRoom"
+            type="button"
+            class="setting-row dialog-setting-row"
+            @click="handleToggleMute(currentRoom.id)"
+          >
+            <span>消息免打扰</span>
+            <i :class="{ active: isRoomMuted(currentRoom.id) }"></i>
+          </button>
+        </section>
+
+        <section class="settings-dialog-section">
+          <div class="settings-section-title">
+            <h4>群资料</h4>
+            <span v-if="!canManageRoom">仅教师/管理员可修改</span>
+          </div>
+          <el-form label-position="top">
+            <el-form-item label="群名称">
+              <el-input v-model="roomForm.name" :disabled="!canManageRoom" placeholder="请输入群名称" />
+            </el-form-item>
+            <el-form-item label="所属学院">
+              <el-select v-model="roomForm.college" :disabled="!canManageRoom" placeholder="全校大厅" clearable>
+                <el-option label="计算机学院" value="计算机学院" />
+                <el-option label="机械学院" value="机械学院" />
+                <el-option label="电子信息学院" value="电子信息学院" />
+                <el-option label="经济管理学院" value="经济管理学院" />
+                <el-option label="外国语学院" value="外国语学院" />
+                <el-option label="理学院" value="理学院" />
+                <el-option label="人文社科学院" value="人文社科学院" />
+                <el-option label="自动化学院" value="自动化学院" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="群类型">
+              <el-radio-group v-model="roomForm.roomLevel" :disabled="!canManageRoom">
+                <el-radio value="FREE">公开群</el-radio>
+                <el-radio value="VIP">VIP群</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-form>
+        </section>
+      </div>
+      <template #footer>
+        <el-button @click="showRoomSettingsDialog = false">{{ canManageRoom ? '取消' : '关闭' }}</el-button>
+        <el-button v-if="canManageRoom" type="primary" @click="saveRoomSettings">保存设置</el-button>
+      </template>
+    </el-dialog>
+
     <!-- Context menu -->
     <div
       v-if="showContextMenu && contextMenuRoom"
@@ -361,7 +490,10 @@ import {
   joinByGroupNumber,
   togglePinRoom,
   toggleMuteRoom,
-  getRoomSettings
+  getRoomSettings,
+  updateRoom,
+  getRoomMembers,
+  updateRoomNotice
 } from '@/api/chat'
 import chatWebSocket from '@/utils/chat-websocket'
 import dayjs from 'dayjs'
@@ -371,6 +503,8 @@ const route = useRoute()
 const userStore = useUserStore()
 
 const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
+const NOTICE_STORAGE_KEY = 'miaomiao_chat_room_notices'
+const defaultNotice = '请文明交流，讨论题目思路时尽量说明题号、语言和报错信息。'
 
 const fixAvatarUrl = (url) => {
   if (!url) return defaultAvatar
@@ -382,6 +516,7 @@ const fixAvatarUrl = (url) => {
 const messages = ref([])
 const inputMessage = ref('')
 const messageListRef = ref(null)
+const messageInputRef = ref(null)
 const connected = ref(false)
 const searchKeyword = ref('')
 const searchResults = ref([])
@@ -403,15 +538,38 @@ const joinGroupNumber = ref('')
 const contextMenuRoom = ref(null)
 const showContextMenu = ref(false)
 const contextMenuPos = ref({ x: 0, y: 0 })
+const likedMessageKeys = ref([])
+const showMembersDialog = ref(false)
+const showNoticeDialog = ref(false)
+const showRoomSettingsDialog = ref(false)
+const noticeDraft = ref('')
+const noticeStore = ref({})
+const noticeTimeStore = ref({})
+const roomForm = ref({ name: '', college: '', roomLevel: 'FREE' })
+const roomMembers = ref([])
 
 const currentUserId = computed(() => userStore.getUserId)
 const isTeacher = computed(() => Number(userStore.getUserRoleId) >= 3)
+const canManageRoom = computed(() => Number(userStore.getUserRoleId) >= 3)
 const roomDisplayName = computed(() => currentRoom.value?.roomName || currentRoom.value?.name || '综合交流大厅')
 const roomMemberCount = computed(() => {
+  if (roomMembers.value.length > 0) return roomMembers.value.length
   const explicit = currentRoom.value?.memberCount || currentRoom.value?.userCount || currentRoom.value?.onlineCount
-  return explicit || contacts.value.length || rooms.value.length || 0
+  return explicit || 0
 })
-const memberPreview = computed(() => contacts.value.slice(0, 6))
+const memberPreview = computed(() => roomMembers.value.slice(0, 6))
+const memberDialogList = computed(() => roomMembers.value.slice(0, 24))
+const currentRoomNoticeKey = computed(() => String(currentRoom.value?.id || 'default'))
+const currentNoticeText = computed(() => {
+  const backendNotice = currentRoom.value?.notice
+  if (backendNotice) return backendNotice
+  return noticeStore.value[currentRoomNoticeKey.value] || defaultNotice
+})
+const currentNoticeTime = computed(() => {
+  const backendTime = currentRoom.value?.noticeUpdatedAt
+  if (backendTime) return dayjs(backendTime).format('YYYY-MM-DD HH:mm')
+  return noticeTimeStore.value[currentRoomNoticeKey.value] || dayjs().format('YYYY-MM-DD HH:mm')
+})
 
 const getBubbleClass = (msg) => {
   const classes = []
@@ -424,6 +582,179 @@ const getBubbleClass = (msg) => {
   else if (msg.senderRole === 3) classes.push('bubble-teacher')
   else if (msg.senderRole === 4) classes.push('bubble-admin')
   return classes.join(' ')
+}
+
+const getSenderName = (msg) => {
+  if (msg.senderId === currentUserId.value) return userStore.getUserName || msg.senderName || '我'
+  return msg.senderName || '匿名用户'
+}
+
+const getSenderLevel = (msg) => {
+  const level = msg.senderLevel || msg.level || msg.userLevel
+  if (level) return String(level).startsWith('LV.') ? level : `LV.${level}`
+  if (msg.senderRole === 4) return 'LV.9'
+  if (msg.senderRole === 3) return 'LV.8'
+  if (msg.senderRole === 2) return 'LV.6'
+  return 'LV.4'
+}
+
+const formatMessageTime = (time) => {
+  if (!time) return ''
+  return dayjs(time).format('HH:mm')
+}
+
+const getMessageKey = (msg) => String(msg.id || `${msg.senderId}-${msg.createTime}-${msg.content}`)
+
+const isMessageLiked = (msg) => likedMessageKeys.value.includes(getMessageKey(msg))
+
+const getMessageLikeCount = (msg) => {
+  const base = Number(msg.likeCount ?? msg.likes ?? 0)
+  return base + (isMessageLiked(msg) ? 1 : 0)
+}
+
+const toggleMessageLike = (msg) => {
+  const key = getMessageKey(msg)
+  if (likedMessageKeys.value.includes(key)) {
+    likedMessageKeys.value = likedMessageKeys.value.filter(item => item !== key)
+    return
+  }
+  likedMessageKeys.value = [...likedMessageKeys.value, key]
+}
+
+const replyToMessage = (msg) => {
+  const prefix = `回复 ${getSenderName(msg)}：`
+  inputMessage.value = inputMessage.value.trim()
+    ? `${inputMessage.value} ${prefix}`
+    : prefix
+  nextTick(() => {
+    messageInputRef.value?.focus?.()
+  })
+}
+
+const getMemberRoleText = (member) => {
+  const role = Number(member.roleId || member.role_id || member.role)
+  if (role === 4) return '管理员'
+  if (role === 3) return '教师'
+  if (role === 2) return 'VIP学生'
+  return member.roleName || '学生'
+}
+
+const loadNoticeStore = () => {
+  try {
+    const raw = localStorage.getItem(NOTICE_STORAGE_KEY)
+    if (!raw) return
+    const parsed = JSON.parse(raw)
+    noticeStore.value = parsed.notices || {}
+    noticeTimeStore.value = parsed.times || {}
+  } catch (e) {
+    console.error('读取群公告缓存失败:', e)
+  }
+}
+
+const persistNoticeStore = () => {
+  localStorage.setItem(NOTICE_STORAGE_KEY, JSON.stringify({
+    notices: noticeStore.value,
+    times: noticeTimeStore.value
+  }))
+}
+
+const openMembersDialog = () => {
+  showMembersDialog.value = true
+}
+
+const openNoticeDialog = () => {
+  noticeDraft.value = currentNoticeText.value
+  showNoticeDialog.value = true
+}
+
+const saveNoticeDraft = async () => {
+  if (!canManageRoom.value) {
+    ElMessage.warning('只有教师和管理员可以编辑群公告')
+    return
+  }
+  const content = noticeDraft.value.trim()
+  if (!content) {
+    ElMessage.warning('公告内容不能为空')
+    return
+  }
+  const key = currentRoomNoticeKey.value
+
+  // Save to backend
+  if (currentRoom.value?.id) {
+    try {
+      const res = await updateRoomNotice(currentRoom.value.id, content)
+      if (res && res.code === 200) {
+        // Update local room data
+        currentRoom.value = { ...currentRoom.value, notice: content, noticeUpdatedAt: new Date().toISOString() }
+        rooms.value = rooms.value.map(r => r.id === currentRoom.value.id ? { ...r, notice: content } : r)
+      }
+    } catch (e) {
+      console.error('保存公告到后端失败:', e)
+    }
+  }
+
+  // Also save to localStorage as fallback
+  noticeStore.value = { ...noticeStore.value, [key]: content }
+  noticeTimeStore.value = { ...noticeTimeStore.value, [key]: dayjs().format('YYYY-MM-DD HH:mm') }
+  persistNoticeStore()
+  showNoticeDialog.value = false
+  ElMessage.success('群公告已更新')
+}
+
+const openRoomSettings = () => {
+  if (!currentRoom.value) {
+    ElMessage.warning('请先选择群聊')
+    return
+  }
+  roomForm.value = {
+    name: currentRoom.value.roomName || currentRoom.value.name || '',
+    college: currentRoom.value.college || '',
+    roomLevel: currentRoom.value.roomLevel || 'FREE'
+  }
+  showRoomSettingsDialog.value = true
+}
+
+const saveRoomSettings = async () => {
+  if (!canManageRoom.value) {
+    ElMessage.warning('只有教师和管理员可以修改群资料')
+    return
+  }
+  if (!currentRoom.value?.id) {
+    ElMessage.warning('请先选择群聊')
+    return
+  }
+  const name = roomForm.value.name.trim()
+  if (!name) {
+    ElMessage.warning('群名称不能为空')
+    return
+  }
+  const payload = {
+    name,
+    college: roomForm.value.college || '',
+    roomLevel: roomForm.value.roomLevel || 'FREE'
+  }
+  try {
+    const res = await updateRoom(currentRoom.value.id, payload)
+    if (res && res.code === 200) {
+      const nextRoom = {
+        ...currentRoom.value,
+        ...(res.data || {}),
+        name: payload.name,
+        roomName: payload.name,
+        college: payload.college,
+        roomLevel: payload.roomLevel
+      }
+      currentRoom.value = nextRoom
+      rooms.value = rooms.value.map(room => room.id === nextRoom.id ? { ...room, ...nextRoom } : room)
+      showRoomSettingsDialog.value = false
+      ElMessage.success('群设置已保存')
+    } else {
+      ElMessage.error(res?.message || '保存失败')
+    }
+  } catch (e) {
+    console.error('保存群设置失败:', e)
+    ElMessage.error('保存失败')
+  }
 }
 
 // Sorted rooms: pinned first, then by id
@@ -509,6 +840,9 @@ const selectRoom = async (room) => {
   } catch (e) {
     console.error('加载房间消息失败:', e)
   }
+
+  // Load room members
+  await loadRoomMembers(room.id)
 
   // Subscribe to the new room via WebSocket
   if (connected.value) {
@@ -649,6 +983,18 @@ const loadContacts = async () => {
   }
 }
 
+const loadRoomMembers = async (roomId) => {
+  try {
+    const res = await getRoomMembers(roomId)
+    if (res && res.code === 200) {
+      roomMembers.value = res.data || []
+    }
+  } catch (e) {
+    console.error('加载群成员失败:', e)
+    roomMembers.value = []
+  }
+}
+
 // ──────────────── Message handling ────────────────
 
 const handleMessageReceived = (msg) => {
@@ -774,6 +1120,7 @@ watch(() => route.path, (newPath) => {
 })
 
 onMounted(async () => {
+  loadNoticeStore()
   await loadRooms()
   connectAndSubscribe()
   loadContacts()
@@ -1953,6 +2300,270 @@ onUnmounted(() => {
   transform: translateX(18px);
 }
 
+/* QQ-inspired message composition */
+.message-row {
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.message-row.self {
+  flex-direction: row-reverse;
+}
+
+.msg-body {
+  max-width: min(76%, 760px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin: 0;
+}
+
+.message-row.self .msg-body {
+  align-items: flex-end;
+}
+
+.message-meta {
+  width: 100%;
+  min-height: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.message-row.self .message-meta {
+  justify-content: flex-end;
+}
+
+.sender-name,
+.message-row.self .sender-name {
+  display: inline-flex;
+  max-width: 160px;
+  margin: 0;
+  color: #627087;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.message-time {
+  margin-left: 4px;
+  color: #9aa8bc;
+  font-weight: 650;
+}
+
+.level-badge,
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 18px;
+  font-weight: 850;
+  margin-left: 0;
+  vertical-align: baseline;
+}
+
+.level-badge {
+  color: #4672f6;
+  background: #e8efff;
+}
+
+.vip-badge {
+  color: #d97706;
+  background: #fff4d6;
+}
+
+.teacher-badge {
+  color: #0891b2;
+  background: #dff7fb;
+}
+
+.admin-badge {
+  color: #7c3aed;
+  background: #f0e8ff;
+}
+
+.msg-avatar {
+  width: 42px;
+  height: 42px;
+  box-shadow: 0 8px 18px rgba(40, 78, 142, 0.12);
+}
+
+.bubble,
+.bubble-peer,
+.bubble-self,
+.bubble-vip.bubble-peer,
+.bubble-teacher.bubble-peer,
+.bubble-admin.bubble-peer,
+.bubble-vip.bubble-self,
+.bubble-teacher.bubble-self,
+.bubble-admin.bubble-self {
+  max-width: 100%;
+  min-height: 36px;
+  padding: 8px 16px;
+  border-radius: 15px;
+  color: #1f2a44;
+  background: #f4f7fb;
+  border: 1px solid #e2eaf5;
+  box-shadow: 0 8px 20px rgba(40, 78, 142, 0.08);
+  line-height: 1.62;
+}
+
+.bubble-self,
+.bubble-vip.bubble-self,
+.bubble-teacher.bubble-self,
+.bubble-admin.bubble-self {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(135deg, #2f7df5, #7560f5);
+}
+
+.message-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.message-row.self .message-actions {
+  justify-content: flex-end;
+}
+
+.message-action {
+  min-width: 42px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 10px;
+  border: 1px solid #cfe0f6;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  color: #687891;
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, color 160ms ease, background 160ms ease;
+}
+
+.message-action:hover {
+  color: var(--app-primary);
+  border-color: rgba(37, 99, 235, 0.36);
+  background: #fff;
+  transform: translateY(-1px);
+}
+
+.message-action.active {
+  color: var(--app-primary);
+  border-color: rgba(37, 99, 235, 0.42);
+  background: var(--app-primary-soft);
+}
+
+.message-action strong {
+  font-size: 12px;
+}
+
+/* Right rail dialogs and editable settings */
+.chat-soft-dialog :deep(.el-dialog) {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(207, 220, 240, 0.96);
+  box-shadow: 0 22px 60px rgba(40, 78, 142, 0.18);
+}
+
+.member-dialog-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.member-dialog-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid rgba(218, 229, 245, 0.92);
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.member-dialog-item img {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 8px 18px rgba(40, 78, 142, 0.10);
+}
+
+.member-dialog-item strong {
+  display: block;
+  color: var(--app-text);
+  font-weight: 900;
+}
+
+.member-dialog-item span,
+.dialog-empty-text,
+.permission-hint {
+  color: var(--app-text-muted);
+  font-size: 13px;
+}
+
+.permission-hint {
+  margin: 10px 0 0;
+}
+
+.settings-dialog-body {
+  display: grid;
+  gap: 14px;
+}
+
+.settings-dialog-section {
+  padding: 14px;
+  border: 1px solid rgba(218, 229, 245, 0.92);
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.settings-dialog-section h4,
+.settings-section-title h4 {
+  margin: 0 0 12px;
+  color: var(--app-text);
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.settings-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settings-section-title span {
+  color: #d97706;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.dialog-setting-row {
+  min-height: 46px;
+  padding: 0 4px;
+}
+
+.panel-icon-btn {
+  padding: 4px 0;
+}
+
 @media (max-width: 1180px) {
   .hub-body {
     grid-template-columns: 300px minmax(0, 1fr);
@@ -1980,6 +2591,14 @@ onUnmounted(() => {
 
   .hub-header {
     padding: 0 14px;
+  }
+
+  .msg-body {
+    max-width: calc(100% - 56px);
+  }
+
+  .member-dialog-list {
+    grid-template-columns: 1fr;
   }
 }
 </style>
