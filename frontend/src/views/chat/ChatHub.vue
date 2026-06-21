@@ -12,7 +12,7 @@
       </span>
     </div>
 
-    <div class="hub-body">
+    <div class="hub-body" :class="{ 'panel-collapsed': !showInfoPanel }">
       <!-- Left panel -->
       <div class="left-panel">
         <!-- Room section -->
@@ -123,6 +123,17 @@
               <span class="badge-dot"></span>
               {{ connected ? '已连接' : '未连接' }}
             </span>
+            <button
+              class="header-icon-btn info-toggle-btn"
+              :class="{ active: showInfoPanel }"
+              @click="toggleInfoPanel"
+              :title="showInfoPanel ? '隐藏群组信息' : '显示群组信息'"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path v-if="showInfoPanel" d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path v-else d="M10 3l-5 5 5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
           </div>
         </div>
 
@@ -204,7 +215,7 @@
         </div>
       </div>
 
-      <aside class="info-panel" aria-label="群组信息">
+      <aside v-if="showInfoPanel" class="info-panel" aria-label="群组信息">
         <section class="info-card room-profile-card">
           <div class="info-card-header">
             <h3>群组信息</h3>
@@ -547,6 +558,13 @@ const noticeStore = ref({})
 const noticeTimeStore = ref({})
 const roomForm = ref({ name: '', college: '', roomLevel: 'FREE' })
 const roomMembers = ref([])
+const INFO_PANEL_KEY = 'miaomiao_chat_info_panel_visible'
+const showInfoPanel = ref(localStorage.getItem(INFO_PANEL_KEY) === 'true')
+
+const toggleInfoPanel = () => {
+  showInfoPanel.value = !showInfoPanel.value
+  localStorage.setItem(INFO_PANEL_KEY, String(showInfoPanel.value))
+}
 
 const currentUserId = computed(() => userStore.getUserId)
 const isTeacher = computed(() => Number(userStore.getUserRoleId) >= 3)
@@ -1588,6 +1606,12 @@ onUnmounted(() => {
   background: var(--app-primary-soft);
 }
 
+.info-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .room-badge {
   font-size: 11px;
   padding: 2px 10px;
@@ -1946,6 +1970,10 @@ onUnmounted(() => {
   gap: 18px;
   height: calc(100vh - 64px);
   padding: 18px;
+}
+
+.hub-body.panel-collapsed {
+  grid-template-columns: 310px minmax(0, 1fr);
 }
 
 .left-panel,
