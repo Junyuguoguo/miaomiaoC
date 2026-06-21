@@ -186,6 +186,92 @@
           >发送</button>
         </div>
       </div>
+
+      <aside class="info-panel" aria-label="群组信息">
+        <section class="info-card room-profile-card">
+          <div class="info-card-header">
+            <h3>群组信息</h3>
+            <button type="button" class="panel-icon-btn" title="更多设置">⌘</button>
+          </div>
+          <div class="room-avatar-large" aria-hidden="true">•••</div>
+          <h2>{{ roomDisplayName }}</h2>
+          <p>
+            群号：{{ currentRoom?.groupNumber || '暂无' }}
+            <button v-if="currentRoom?.groupNumber" class="copy-inline-btn" type="button" @click="copyGroupNumber">复制</button>
+          </p>
+          <div class="room-profile-stats">
+            <div>
+              <strong>{{ roomMemberCount }}</strong>
+              <span>群成员</span>
+            </div>
+            <div>
+              <strong>{{ connected ? '在线' : '离线' }}</strong>
+              <span>连接状态</span>
+            </div>
+            <div>
+              <strong>{{ currentRoom?.roomLevel === 'VIP' ? 'VIP' : '公开' }}</strong>
+              <span>群类型</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="info-card">
+          <div class="info-card-header">
+            <h3>群成员</h3>
+            <button type="button" class="info-link-btn">查看更多</button>
+          </div>
+          <div class="member-preview">
+            <img
+              v-for="contact in memberPreview"
+              :key="contact.userId || contact.id"
+              :src="fixAvatarUrl(contact.avatar)"
+              :alt="contact.username || contact.realName || '成员头像'"
+            />
+            <span v-if="memberPreview.length === 0" class="empty-inline">暂无成员预览</span>
+          </div>
+          <div class="member-legend">
+            <span><i class="legend-dot admin"></i>管理员</span>
+            <span><i class="legend-dot teacher"></i>教师</span>
+            <span><i class="legend-dot vip"></i>VIP学生</span>
+          </div>
+        </section>
+
+        <section class="info-card">
+          <div class="info-card-header">
+            <h3>群公告</h3>
+            <button type="button" class="info-link-btn">编辑</button>
+          </div>
+          <div class="notice-box">
+            <span class="notice-pin">置顶</span>
+            <p>请文明交流，讨论题目思路时尽量说明题号、语言和报错信息。</p>
+            <small>发布于 {{ dayjs().format('YYYY-MM-DD HH:mm') }}</small>
+          </div>
+        </section>
+
+        <section class="info-card">
+          <div class="info-card-header">
+            <h3>群设置</h3>
+          </div>
+          <button
+            v-if="currentRoom"
+            type="button"
+            class="setting-row"
+            @click="handleTogglePin(currentRoom.id)"
+          >
+            <span>置顶聊天</span>
+            <i :class="{ active: isRoomPinned(currentRoom.id) }"></i>
+          </button>
+          <button
+            v-if="currentRoom"
+            type="button"
+            class="setting-row"
+            @click="handleToggleMute(currentRoom.id)"
+          >
+            <span>消息免打扰</span>
+            <i :class="{ active: isRoomMuted(currentRoom.id) }"></i>
+          </button>
+        </section>
+      </aside>
     </div>
 
     <!-- Create room dialog -->
@@ -320,6 +406,12 @@ const contextMenuPos = ref({ x: 0, y: 0 })
 
 const currentUserId = computed(() => userStore.getUserId)
 const isTeacher = computed(() => Number(userStore.getUserRoleId) >= 3)
+const roomDisplayName = computed(() => currentRoom.value?.roomName || currentRoom.value?.name || '综合交流大厅')
+const roomMemberCount = computed(() => {
+  const explicit = currentRoom.value?.memberCount || currentRoom.value?.userCount || currentRoom.value?.onlineCount
+  return explicit || contacts.value.length || rooms.value.length || 0
+})
+const memberPreview = computed(() => contacts.value.slice(0, 6))
 
 const getBubbleClass = (msg) => {
   const classes = []
@@ -1470,6 +1562,424 @@ onUnmounted(() => {
 
   .input-bar {
     padding: 10px 12px;
+  }
+}
+
+/* Student visual system chat refresh */
+.chat-hub {
+  background:
+      radial-gradient(circle at 18% 8%, rgba(37, 99, 235, 0.10), transparent 30%),
+      radial-gradient(circle at 88% 0%, rgba(124, 92, 255, 0.09), transparent 26%),
+      linear-gradient(180deg, #f8fbff 0%, #f3f7fe 48%, #edf4fb 100%);
+}
+
+.hub-header {
+  height: 64px;
+  padding: 0 24px;
+  background: rgba(255, 255, 255, 0.84);
+  border-bottom: 1px solid rgba(207, 220, 240, 0.88);
+  box-shadow: 0 12px 28px rgba(40, 78, 142, 0.06);
+  backdrop-filter: blur(18px);
+}
+
+.header-back {
+  border: 1px solid rgba(207, 220, 240, 0.88);
+  background: #fff;
+  color: var(--app-primary);
+}
+
+.header-title {
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.hub-body {
+  display: grid;
+  grid-template-columns: 310px minmax(0, 1fr) 330px;
+  gap: 18px;
+  height: calc(100vh - 64px);
+  padding: 18px;
+}
+
+.left-panel,
+.right-panel,
+.info-panel {
+  min-height: 0;
+  border: 1px solid rgba(207, 220, 240, 0.88);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 14px 34px rgba(40, 78, 142, 0.08);
+  overflow: hidden;
+}
+
+.left-panel {
+  width: auto;
+}
+
+.room-section,
+.contact-section {
+  padding: 18px;
+}
+
+.section-title,
+.room-section .section-title,
+.contact-section .section-title {
+  color: var(--app-text);
+  font-weight: 850;
+}
+
+.join-room-btn,
+.add-room-btn {
+  border-radius: 8px;
+  font-weight: 800;
+}
+
+.room-card,
+.contact-card {
+  border-radius: 8px;
+  border: 1px solid transparent;
+}
+
+.room-card.active {
+  border-left: 0;
+  border-color: rgba(37, 99, 235, 0.28);
+  background: linear-gradient(135deg, rgba(232, 240, 255, 0.96), rgba(244, 239, 255, 0.84));
+}
+
+.search-input {
+  height: 42px;
+  background: #f7faff;
+  border-color: rgba(207, 220, 240, 0.88);
+}
+
+.right-panel {
+  flex: initial;
+}
+
+.room-header {
+  height: 64px;
+  padding: 0 22px;
+  background: rgba(255, 255, 255, 0.9);
+  border-bottom: 1px solid rgba(207, 220, 240, 0.88);
+}
+
+.room-header-name {
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.message-list {
+  padding: 22px;
+  background:
+      linear-gradient(180deg, rgba(248, 251, 255, 0.72), rgba(255, 255, 255, 0.88));
+}
+
+.bubble {
+  border-radius: 8px;
+  box-shadow: 0 10px 22px rgba(40, 78, 142, 0.08);
+}
+
+.bubble-self {
+  color: #fff;
+  background: linear-gradient(135deg, #1f7bff, #7c5cff);
+}
+
+.bubble-peer {
+  color: var(--app-text);
+  background: #fff;
+  border: 1px solid rgba(218, 229, 245, 0.9);
+}
+
+.bubble-vip.bubble-self,
+.bubble-teacher.bubble-self,
+.bubble-admin.bubble-self {
+  color: #fff;
+  background: linear-gradient(135deg, #1f7bff, #7c5cff);
+}
+
+.input-bar {
+  min-height: 74px;
+  padding: 14px 18px;
+  background: rgba(255, 255, 255, 0.92);
+  border-top: 1px solid rgba(207, 220, 240, 0.88);
+}
+
+.msg-input {
+  height: 46px;
+  border-color: rgba(207, 220, 240, 0.92);
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.msg-input:focus {
+  border-color: var(--app-primary);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.10);
+}
+
+.send-btn {
+  height: 46px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #1f7bff, #7c5cff);
+  font-weight: 850;
+  box-shadow: 0 12px 26px rgba(37, 99, 235, 0.22);
+}
+
+.send-disabled {
+  background: #d4deec;
+  box-shadow: none;
+}
+
+.info-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px;
+  overflow-y: auto;
+}
+
+.info-card {
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(218, 229, 245, 0.92);
+  border-radius: 8px;
+}
+
+.info-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.info-card-header h3 {
+  margin: 0;
+  color: var(--app-text);
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.panel-icon-btn,
+.info-link-btn,
+.copy-inline-btn {
+  border: 0;
+  background: transparent;
+  color: var(--app-primary);
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.room-profile-card {
+  text-align: center;
+}
+
+.room-avatar-large {
+  width: 82px;
+  height: 82px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 14px;
+  color: #fff;
+  border-radius: 26px;
+  background: linear-gradient(135deg, #1f7bff, #7c5cff);
+  box-shadow: 0 18px 34px rgba(37, 99, 235, 0.24);
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.room-profile-card h2 {
+  margin: 0 0 6px;
+  color: var(--app-text);
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.room-profile-card p {
+  margin: 0 0 16px;
+  color: var(--app-text-muted);
+  font-size: 13px;
+}
+
+.room-profile-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.room-profile-stats div {
+  min-width: 0;
+  padding: 10px 6px;
+  background: #f7faff;
+  border: 1px solid rgba(218, 229, 245, 0.92);
+  border-radius: 8px;
+}
+
+.room-profile-stats strong {
+  display: block;
+  color: var(--app-text);
+  font-size: 15px;
+  font-weight: 900;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.room-profile-stats span {
+  color: var(--app-text-muted);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.member-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.member-preview img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #fff;
+  box-shadow: 0 8px 18px rgba(40, 78, 142, 0.12);
+}
+
+.empty-inline {
+  color: var(--app-text-muted);
+  font-size: 13px;
+}
+
+.member-legend {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  color: var(--app-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.legend-dot {
+  width: 7px;
+  height: 7px;
+  display: inline-block;
+  margin-right: 4px;
+  border-radius: 50%;
+  background: #94a3b8;
+}
+
+.legend-dot.admin {
+  background: #7c3aed;
+}
+
+.legend-dot.teacher {
+  background: #06b6d4;
+}
+
+.legend-dot.vip {
+  background: #f59e0b;
+}
+
+.notice-box {
+  padding: 14px;
+  background: #f8fbff;
+  border: 1px solid rgba(218, 229, 245, 0.92);
+  border-radius: 8px;
+}
+
+.notice-pin {
+  display: inline-flex;
+  padding: 2px 8px;
+  color: var(--app-primary);
+  background: var(--app-primary-soft);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.notice-box p {
+  margin: 10px 0;
+  color: var(--app-text);
+  line-height: 1.65;
+}
+
+.notice-box small {
+  color: var(--app-text-muted);
+}
+
+.setting-row {
+  width: 100%;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0;
+  color: var(--app-text);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-weight: 750;
+}
+
+.setting-row i {
+  width: 42px;
+  height: 24px;
+  position: relative;
+  border-radius: 999px;
+  background: #d7e1ef;
+  transition: background-color 160ms ease;
+}
+
+.setting-row i::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 3px 8px rgba(40, 78, 142, 0.20);
+  transition: transform 160ms ease;
+}
+
+.setting-row i.active {
+  background: linear-gradient(135deg, #1f7bff, #7c5cff);
+}
+
+.setting-row i.active::after {
+  transform: translateX(18px);
+}
+
+@media (max-width: 1180px) {
+  .hub-body {
+    grid-template-columns: 300px minmax(0, 1fr);
+  }
+
+  .info-panel {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .hub-body {
+    grid-template-columns: 1fr;
+    padding: 12px;
+  }
+
+  .left-panel,
+  .info-panel {
+    display: none;
+  }
+
+  .right-panel {
+    width: 100%;
+  }
+
+  .hub-header {
+    padding: 0 14px;
   }
 }
 </style>
