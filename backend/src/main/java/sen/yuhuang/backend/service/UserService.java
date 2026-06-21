@@ -51,8 +51,12 @@ public class UserService {
                 Long roleId = user.getRoleId();
                 Optional<Role> Role = roleRepository.findById(roleId);
 
-                if ((Role.isPresent() && Role.get().getRoleCode().equalsIgnoreCase(role)) ||
-                        (Role.isPresent() && Role.get().getRoleCode().equals("VIP_STUDENT"))) {
+                // 严格匹配角色：VIP_STUDENT 只能用 student 角色登录
+                String userRoleCode = Role.get().getRoleCode();
+                boolean roleMatch = userRoleCode.equalsIgnoreCase(role)
+                        || (userRoleCode.equals("VIP_STUDENT") && role.equalsIgnoreCase("student"));
+
+                if (Role.isPresent() && roleMatch) {
                     // 使用userName+Password 生成 token
                     String token = TokenUtil.generateHashedToken(user.getUsername(), user.getPassword());
 
