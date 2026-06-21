@@ -121,6 +121,13 @@ export function getExamRecordList(data) {
         data
     })
 }
+export function getViolationRecords(data = {}) {
+    return request({
+        url: '/api/exam/violations',
+        method: 'post',
+        data
+    })
+}
 export const batchUpdateExamStatus = (updates) => {
     return request({
         url: '/api/exam/batchUpdateStatus',

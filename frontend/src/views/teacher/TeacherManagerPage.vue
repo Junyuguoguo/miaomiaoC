@@ -8,9 +8,10 @@
       </div>
       <div class="user-info">
         <el-avatar :size="60" class="user-avatar">
-          <el-icon><User /></el-icon>
+          <img v-if="userStore.getUserAvatar" :src="fixAvatarUrl(userStore.getUserAvatar)" alt="头像" />
+          <el-icon v-else><User /></el-icon>
         </el-avatar>
-        <div class="user-name">教师账号</div>
+        <div class="user-name">{{ userStore.getUserName || '教师' }}</div>
         <div class="user-role">教师</div>
       </div>
       <!-- 导航菜单（复用可行的菜单选择逻辑） -->
@@ -38,6 +39,26 @@
         <el-menu-item index="5">
           <el-icon><DataAnalysis /></el-icon>
           <span>数据统计</span>
+        </el-menu-item>
+        <el-menu-item index="6">
+          <el-icon><Medal /></el-icon>
+          <span>VIP设置</span>
+        </el-menu-item>
+        <el-menu-item index="7">
+          <el-icon><Key /></el-icon>
+          <span>VIP密钥管理</span>
+        </el-menu-item>
+        <el-menu-item index="8">
+          <el-icon><ChatDotRound /></el-icon>
+          <span>在线交流</span>
+        </el-menu-item>
+        <el-menu-item index="9">
+          <el-icon><User /></el-icon>
+          <span>个人中心</span>
+        </el-menu-item>
+        <el-menu-item index="10">
+          <el-icon><ChatLineSquare /></el-icon>
+          <span>聊天室管理</span>
         </el-menu-item>
       </el-menu>
       <!-- 退出登录 -->
@@ -430,25 +451,46 @@
         <!-- 4. 违规记录管理 -->
         <div v-if="currentMenu === '4'" class="page-content">
           <div class="page-title">违规记录管理</div>
-          <el-table :data="violationList" border>
-            <el-table-column label="ID" prop="id" />
-            <el-table-column label="考试ID" prop="examId" />
-            <el-table-column label="学生ID" prop="userId" />
-            <el-table-column label="违规说明" prop="violationDesc" min-width="250" />
-            <el-table-column label="违规时间" prop="createTime" />
-            <el-table-column label="处理状态">
-              <template #default="scope">
-                <el-tag :type="scope.row.status === 1 ? 'success' : 'warning'">
-                  {{ scope.row.status === 1 ? '已处理' : '未处理' }}
+          <div class="violation-summary">
+            <div class="violation-stat">
+              <span>违规记录</span>
+              <strong>{{ violationStats.total }}</strong>
+            </div>
+            <div class="violation-stat">
+              <span>涉及学生</span>
+              <strong>{{ violationStats.studentCount }}</strong>
+            </div>
+            <div class="violation-stat danger">
+              <span>超过3次</span>
+              <strong>{{ violationStats.forceSubmitCount }}</strong>
+            </div>
+          </div>
+          <el-table v-loading="violationLoading" :data="violationList" border empty-text="暂无违规记录">
+            <el-table-column label="ID" prop="id" width="80" />
+            <el-table-column label="考试" min-width="180" show-overflow-tooltip>
+              <template #default="{ row }">
+                {{ row.examTitle || `考试ID ${row.examId}` }}
+              </template>
+            </el-table-column>
+            <el-table-column label="学生" min-width="210" show-overflow-tooltip>
+              <template #default="{ row }">
+                <div class="student-cell">
+                  <strong>{{ row.studentDisplay || `学生ID ${row.userId}` }}</strong>
+                  <span>ID: {{ row.userId }}</span>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column label="切屏次数" width="110" align="center">
+              <template #default="{ row }">
+                <el-tag :type="Number(row.count) > 3 ? 'danger' : 'warning'">
+                  {{ row.count || 0 }}次
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="操作">
-              <template #default="scope">
-                <el-button text @click="handleViolation(scope.row)">
-                  {{ scope.row.status === 0 ? '标记已处理' : '已处理' }}
-                </el-button>
-              </template>
+            <el-table-column label="违规类型" prop="violationType" min-width="170" show-overflow-tooltip />
+            <el-table-column label="违规说明" prop="violationDesc" min-width="240" show-overflow-tooltip />
+            <el-table-column label="违规时间" min-width="170">
+              <template #default="{ row }">{{ formatDateTime(row.createTime) }}</template>
             </el-table-column>
           </el-table>
         </div>
@@ -598,6 +640,174 @@
             </el-card>
           </div>
         </div>
+
+        <!-- 6. VIP设置 -->
+        <div v-if="currentMenu === '6'" class="page-content vip-manage-page">
+          <div class="page-title-row">
+            <div>
+              <div class="page-title">VIP设置</div>
+              <p>配置学生端展示的VIP价格、有效期以及管理员QQ/微信联系方式。</p>
+            </div>
+            <el-button type="primary" @click="openVipAdd">
+              <el-icon><Plus /></el-icon>
+              新增套餐
+            </el-button>
+          </div>
+
+          <el-table v-loading="vipLoading" :data="vipPlanList" border>
+            <el-table-column label="套餐" prop="planName" min-width="150" />
+            <el-table-column label="价格" width="120" align="center">
+              <template #default="{ row }">¥{{ formatVipPrice(row.price) }}</template>
+            </el-table-column>
+            <el-table-column label="有效天数" prop="durationDays" width="120" align="center" />
+            <el-table-column label="QQ" prop="contactQq" min-width="140" show-overflow-tooltip />
+            <el-table-column label="微信" prop="contactWechat" min-width="140" show-overflow-tooltip />
+            <el-table-column label="状态" width="100" align="center">
+              <template #default="{ row }">
+                <el-tag :type="row.enabled === 1 ? 'success' : 'info'">
+                  {{ row.enabled === 1 ? '展示中' : '已隐藏' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="排序" prop="sortOrder" width="90" align="center" />
+            <el-table-column label="操作" width="150" fixed="right">
+              <template #default="{ row }">
+                <div class="action-buttons">
+                  <el-button type="primary" link @click="openVipEdit(row)">编辑</el-button>
+                  <el-button type="danger" link @click="removeVipPlan(row)">删除</el-button>
+                </div>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+
+        <!-- 7. VIP密钥管理 -->
+        <div v-if="currentMenu === '7'" class="page-content vip-key-page">
+          <div class="page-title-row">
+            <div>
+              <div class="page-title">VIP密钥管理</div>
+              <p>生成VIP激活密钥，发给学生即可开通VIP。每个密钥只能使用一次。</p>
+            </div>
+            <el-button type="primary" @click="keyGenDialog = true">
+              <el-icon><Key /></el-icon>
+              生成密钥
+            </el-button>
+          </div>
+
+          <div class="key-stats">
+            <el-tag type="info" size="large">未使用: {{ keyStats.unusedCount }}</el-tag>
+            <el-tag type="success" size="large">已使用: {{ keyStats.usedCount }}</el-tag>
+          </div>
+
+          <el-table v-loading="keyLoading" :data="vipKeyList" border>
+            <el-table-column label="密钥" min-width="200">
+              <template #default="{ row }">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <code style="font-size:13px;letter-spacing:1px">{{ row.keyCode }}</code>
+                  <el-button :icon="CopyDocument" link type="primary" @click="copyKeyCode(row.keyCode)" />
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column label="天数" prop="durationDays" width="90" align="center" />
+            <el-table-column label="状态" width="100" align="center">
+              <template #default="{ row }">
+                <el-tag :type="row.status === 0 ? 'warning' : 'success'" size="small">
+                  {{ row.status === 0 ? '未使用' : '已使用' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="备注" prop="note" min-width="140" show-overflow-tooltip />
+            <el-table-column label="使用者" prop="usedByDisplay" min-width="210" show-overflow-tooltip>
+              <template #default="{ row }">{{ row.usedByDisplay || row.usedBy || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="使用时间" min-width="160">
+              <template #default="{ row }">{{ row.usedTime || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="生成时间" min-width="160">
+              <template #default="{ row }">{{ row.createTime }}</template>
+            </el-table-column>
+            <el-table-column label="操作" width="100" fixed="right">
+              <template #default="{ row }">
+                <el-button v-if="row.status === 0" type="danger" link @click="removeVipKey(row)">删除</el-button>
+                <span v-else style="color:#999;font-size:12px">-</span>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+
+        <!-- 9. 个人中心 -->
+        <div v-if="currentMenu === '9'" class="page-content">
+          <div class="page-title">个人中心</div>
+          <div class="profile-card">
+            <div class="profile-avatar-section">
+              <el-avatar :size="80" class="profile-avatar">
+                <img v-if="profileForm.avatar" :src="profileForm.avatar" alt="头像" />
+                <el-icon v-else><User /></el-icon>
+              </el-avatar>
+              <el-button type="primary" plain size="small" @click="triggerTeacherAvatarUpload">
+                更换头像
+              </el-button>
+              <input ref="teacherAvatarInput" type="file" accept="image/jpeg,image/png,image/webp" style="display:none" @change="onTeacherAvatarChange" />
+            </div>
+            <el-form :model="profileForm" label-width="80px" class="profile-form">
+              <el-form-item label="用户名">
+                <el-input v-model="profileForm.username" disabled />
+              </el-form-item>
+              <el-form-item label="真实姓名">
+                <el-input v-model="profileForm.realName" placeholder="请输入真实姓名" />
+              </el-form-item>
+              <el-form-item label="手机号">
+                <el-input v-model="profileForm.phone" placeholder="请输入手机号" />
+              </el-form-item>
+              <el-form-item label="邮箱">
+                <el-input v-model="profileForm.email" placeholder="请输入邮箱" />
+              </el-form-item>
+              <el-form-item label="所属学院">
+                <el-input v-model="profileForm.college" placeholder="请输入所属学院" />
+              </el-form-item>
+              <el-form-item>
+                <el-button type="primary" :loading="profileSaving" @click="saveTeacherProfile">保存</el-button>
+              </el-form-item>
+            </el-form>
+          </div>
+        </div>
+
+        <!-- 10. 聊天室管理 -->
+        <div v-if="currentMenu === '10'" class="page-content">
+          <div class="page-title">聊天室管理</div>
+          <div style="margin-bottom:15px;">
+            <el-button type="primary" @click="showCreateRoomDialog = true">创建聊天室</el-button>
+          </div>
+          <el-table :data="chatRoomList" border>
+            <el-table-column label="ID" prop="id" width="70" />
+            <el-table-column label="房间名称" prop="roomName" />
+            <el-table-column label="群号" width="120" align="center">
+              <template #default="{ row }">
+                <span class="group-num">{{ row.groupNumber }}</span>
+                <el-button type="primary" link size="small" @click="copyText(row.groupNumber)">复制</el-button>
+              </template>
+            </el-table-column>
+            <el-table-column label="所属学院" width="150">
+              <template #default="{ row }">
+                <el-tag v-if="row.college" type="warning">{{ row.college }}</el-tag>
+                <el-tag v-else type="info">全校大厅</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="类型" width="100" align="center">
+              <template #default="{ row }">
+                <el-tag v-if="row.roomLevel === 'VIP'" type="danger" effect="dark">VIP</el-tag>
+                <el-tag v-else type="success">普通</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="成员数" prop="currentMembers" width="100" align="center" />
+            <el-table-column label="操作" width="200" fixed="right">
+              <template #default="{ row }">
+                <el-button type="primary" link @click="openEditRoom(row)">编辑</el-button>
+                <el-button type="danger" link @click="handleDeleteRoom(row.id)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
       </div>
     </div>
 
@@ -648,6 +858,146 @@
         <el-button type="primary" @click="saveExam">保存</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="vipDialog" :title="vipForm.id ? '编辑VIP套餐' : '新增VIP套餐'" width="640px">
+      <el-form :model="vipForm" label-width="110px">
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="套餐名称" required>
+              <el-input v-model="vipForm.planName" placeholder="例如：月度VIP" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="价格" required>
+              <el-input-number v-model="vipForm.price" :min="0" :precision="2" style="width:100%" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="有效天数" required>
+              <el-input-number v-model="vipForm.durationDays" :min="1" style="width:100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="展示状态">
+              <el-switch v-model="vipForm.enabled" :active-value="1" :inactive-value="0" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="管理员QQ">
+              <el-input v-model="vipForm.contactQq" placeholder="学生端可复制" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="微信">
+              <el-input v-model="vipForm.contactWechat" placeholder="学生端可复制" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item label="套餐权益">
+          <el-input v-model="vipForm.benefits" type="textarea" :rows="3" placeholder="例如：VIP考试、VIP题库、冲刺资料" />
+        </el-form-item>
+        <el-form-item label="联系说明">
+          <el-input v-model="vipForm.contactNote" type="textarea" :rows="2" placeholder="例如：联系时发送账号、套餐名称和付款截图" />
+        </el-form-item>
+        <el-form-item label="排序">
+          <el-input-number v-model="vipForm.sortOrder" :min="0" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="vipDialog = false">取消</el-button>
+        <el-button type="primary" @click="submitVipPlan">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 密钥生成弹窗 -->
+    <el-dialog v-model="keyGenDialog" title="生成VIP密钥" width="480px">
+      <el-form :model="keyGenForm" label-width="100px">
+        <el-form-item label="开通天数" required>
+          <el-select v-model="keyGenForm.durationDays" style="width:100%">
+            <el-option label="30天（月卡）" :value="30" />
+            <el-option label="90天（季卡）" :value="90" />
+            <el-option label="180天（半年卡）" :value="180" />
+            <el-option label="365天（年卡）" :value="365" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="生成数量" required>
+          <el-input-number v-model="keyGenForm.count" :min="1" :max="50" style="width:100%" />
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="keyGenForm.note" placeholder="可选，例如：XX班期末考试专用" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="keyGenDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleGenerateKeys">生成</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 创建聊天室弹窗 -->
+    <el-dialog v-model="showCreateRoomDialog" title="创建聊天室" width="400px">
+      <el-form :model="newRoomForm" label-width="80px">
+        <el-form-item label="房间名称">
+          <el-input v-model="newRoomForm.name" placeholder="如：计算机学院交流群" />
+        </el-form-item>
+        <el-form-item label="所属学院">
+          <el-select v-model="newRoomForm.college" placeholder="留空为全校大厅" clearable style="width:100%">
+            <el-option label="计算机学院" value="计算机学院" />
+            <el-option label="机械学院" value="机械学院" />
+            <el-option label="电子信息学院" value="电子信息学院" />
+            <el-option label="经济管理学院" value="经济管理学院" />
+            <el-option label="外国语学院" value="外国语学院" />
+            <el-option label="理学院" value="理学院" />
+            <el-option label="人文社科学院" value="人文社科学院" />
+            <el-option label="自动化学院" value="自动化学院" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="房间类型">
+          <el-radio-group v-model="newRoomForm.roomLevel">
+            <el-radio value="FREE">普通（免费用户自动加入）</el-radio>
+            <el-radio value="VIP">VIP专属（需群号加入）</el-radio>
+          </el-radio-group>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showCreateRoomDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleCreateRoom">创建</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 编辑聊天室弹窗 -->
+    <el-dialog v-model="showEditRoomDialog" title="编辑聊天室" width="400px">
+      <el-form :model="editRoomForm" label-width="80px">
+        <el-form-item label="房间名称">
+          <el-input v-model="editRoomForm.roomName" placeholder="房间名称" />
+        </el-form-item>
+        <el-form-item label="所属学院">
+          <el-select v-model="editRoomForm.college" placeholder="留空为全校大厅" clearable style="width:100%">
+            <el-option label="计算机学院" value="计算机学院" />
+            <el-option label="机械学院" value="机械学院" />
+            <el-option label="电子信息学院" value="电子信息学院" />
+            <el-option label="经济管理学院" value="经济管理学院" />
+            <el-option label="外国语学院" value="外国语学院" />
+            <el-option label="理学院" value="理学院" />
+            <el-option label="人文社科学院" value="人文社科学院" />
+            <el-option label="自动化学院" value="自动化学院" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="房间类型">
+          <el-radio-group v-model="editRoomForm.roomLevel">
+            <el-radio value="FREE">普通（免费用户自动加入）</el-radio>
+            <el-radio value="VIP">VIP专属（需群号加入）</el-radio>
+          </el-radio-group>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showEditRoomDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleEditRoom">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -658,10 +1008,13 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   User, Document, Edit, Folder, Warning, DataAnalysis,
-  SwitchButton, Refresh
+  SwitchButton, Refresh, Medal, Plus, Key, CopyDocument, ChatLineSquare
 } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from "@/stores/user"
+import { updateUserInfo, uploadAvatar } from '@/api/auth.js'
+import Cropper from 'cropperjs'
+import 'cropperjs/dist/cropper.css'
 import dayjs from 'dayjs'
 import {
   addQuestion,
@@ -675,6 +1028,18 @@ import {
   saveExam as saveExamApi,
   updateQuestion
 } from "@/api/teacher.js"
+import {
+  deleteVipPlan,
+  getManageVipPlans,
+  saveVipPlan
+} from "@/api/vip.js"
+import {
+  generateVipKeys,
+  listVipKeys,
+  deleteVipKey
+} from "@/api/vip-key.js"
+import { getViolationRecords } from "@/api/exam.js"
+import { getRooms as getRoomsApi, createRoom as createRoomApi, deleteRoom as deleteRoomApi, updateRoom as updateRoomApi } from '@/api/chat'
 
 // 初始化路由和用户状态管理
 const router = useRouter()
@@ -816,6 +1181,21 @@ const handleQuestionCurrentPageChange = (val) => {
 // 菜单核心逻辑
 const currentMenu = ref('1')  // 临时改为'1'(考试管理),测试是否能显示内容
 const currentTitle = ref('模拟考试管理')
+
+const vipLoading = ref(false)
+const vipPlanList = ref([])
+const vipDialog = ref(false)
+const vipForm = ref({
+  planName: '',
+  price: 0,
+  durationDays: 30,
+  contactQq: '',
+  contactWechat: '',
+  contactNote: '',
+  benefits: '',
+  enabled: 1,
+  sortOrder: 0
+})
 
 // 增强的题目列表，包含题目名称字段
 const questionList = ref([])
@@ -1152,9 +1532,24 @@ const handleMenuSelect = async (index) => {
     await Promise.all([loadExamList(), loadQuestionList()])
   } else if (index === '4') {
     console.log('加载违规记录数据')
+    await loadViolationRecords(true)
   } else if (index === '5') {
     console.log('加载统计数据')
     // 统计数据不需要额外加载，直接从已有数据计算
+  } else if (index === '6') {
+    console.log('加载VIP套餐')
+    await loadVipPlanList()
+  } else if (index === '7') {
+    console.log('加载VIP密钥')
+    await loadVipKeyList(true)
+  } else if (index === '8') {
+    router.push('/chat')
+    return
+  } else if (index === '9') {
+    // 个人中心 — 加载用户信息
+    loadTeacherProfile()
+  } else if (index === '10') {
+    await loadChatRooms()
   }
   currentMenu.value = index
   const titleMap = {
@@ -1162,9 +1557,304 @@ const handleMenuSelect = async (index) => {
     '2': '题目管理',
     '3': '题库管理',
     '4': '违规记录管理',
-    '5': '数据统计'
+    '5': '数据统计',
+    '6': 'VIP设置',
+    '7': 'VIP密钥管理',
+    '8': '在线交流',
+    '9': '个人中心',
+    '10': '聊天室管理'
   }
   currentTitle.value = titleMap[index]
+}
+
+// === 个人中心 ===
+const profileForm = ref({ username: '', realName: '', phone: '', email: '', avatar: '', college: '' })
+const profileSaving = ref(false)
+const teacherAvatarInput = ref(null)
+
+const fixAvatarUrl = (url) => {
+  if (!url) return ''
+  if (url.startsWith('/uploads/')) return '/api/auth/avatar/' + url.split('/').pop()
+  return url
+}
+
+const loadTeacherProfile = () => {
+  const info = userStore.$state.userInfo
+  profileForm.value = {
+    username: info.username || '',
+    realName: info.real_name || info.realName || '',
+    phone: info.phone || '',
+    email: info.email || '',
+    avatar: fixAvatarUrl(info.avatar),
+    college: info.college || ''
+  }
+}
+
+const saveTeacherProfile = async () => {
+  profileSaving.value = true
+  try {
+    const userId = userStore.getUserId
+    const res = await updateUserInfo({
+      userId,
+      avatar: profileForm.value.avatar,
+      real_name: profileForm.value.realName,
+      phone: profileForm.value.phone,
+      email: profileForm.value.email,
+      college: profileForm.value.college,
+      school: userStore.$state.userInfo.school || '',
+      major: userStore.$state.userInfo.major || '',
+      score: userStore.$state.userInfo.score || ''
+    })
+    if (res && res.code === 200) {
+      userStore.updateUserInfo({
+        real_name: profileForm.value.realName,
+        phone: profileForm.value.phone,
+        email: profileForm.value.email,
+        avatar: profileForm.value.avatar,
+        college: profileForm.value.college
+      })
+      ElMessage.success('保存成功')
+    } else {
+      ElMessage.error(res?.message || '保存失败')
+    }
+  } catch {
+    ElMessage.error('保存失败')
+  } finally {
+    profileSaving.value = false
+  }
+}
+
+const triggerTeacherAvatarUpload = () => {
+  teacherAvatarInput.value?.click()
+}
+
+const onTeacherAvatarChange = (e) => {
+  const file = e.target.files[0]
+  if (!file) return
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    ElMessage.error('仅支持 JPG、PNG、WebP 格式')
+    return
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    ElMessage.error('文件大小不能超过 5MB')
+    return
+  }
+  const reader = new FileReader()
+  reader.onload = async (ev) => {
+    try {
+      const blob = await cropImageSimple(ev.target.result)
+      const avatarFile = new File([blob], 'avatar.jpg', { type: 'image/jpeg' })
+      const res = await uploadAvatar(avatarFile)
+      if (res && res.code === 200) {
+        profileForm.value.avatar = res.data
+        ElMessage.success('头像上传成功')
+      } else {
+        ElMessage.error(res?.message || '上传失败')
+      }
+    } catch {
+      ElMessage.error('头像上传失败')
+    }
+  }
+  reader.readAsDataURL(file)
+  e.target.value = ''
+}
+
+// Simple crop using canvas (no dialog needed for teacher)
+const cropImageSimple = (src) => {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      const size = Math.min(img.width, img.height)
+      const sx = (img.width - size) / 2
+      const sy = (img.height - size) / 2
+      const canvas = document.createElement('canvas')
+      canvas.width = 200
+      canvas.height = 200
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(img, sx, sy, size, size, 0, 0, 200, 200)
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('crop failed')), 'image/jpeg', 0.85)
+    }
+    img.onerror = reject
+    img.src = src
+  })
+}
+
+const resetVipForm = () => {
+  vipForm.value = {
+    planName: '',
+    price: 0,
+    durationDays: 30,
+    contactQq: '',
+    contactWechat: '',
+    contactNote: '联系时请发送账号、套餐名称和付款截图。',
+    benefits: '解锁VIP考试、VIP题库、重点练习资料和后续新增会员内容。',
+    enabled: 1,
+    sortOrder: vipPlanList.value.length + 1
+  }
+}
+
+const loadVipPlanList = async (forceRefresh = false) => {
+  if (vipPlanList.value.length > 0 && !forceRefresh) {
+    return
+  }
+  try {
+    vipLoading.value = true
+    const res = await getManageVipPlans()
+    if (res.code === 200) {
+      vipPlanList.value = res.data || []
+    } else {
+      ElMessage.error(res.message || '加载VIP套餐失败')
+    }
+  } catch (error) {
+    console.error('加载VIP套餐失败:', error)
+    ElMessage.error(error.response?.data?.message || '加载VIP套餐异常')
+  } finally {
+    vipLoading.value = false
+  }
+}
+
+const openVipAdd = () => {
+  resetVipForm()
+  vipDialog.value = true
+}
+
+const openVipEdit = (row) => {
+  vipForm.value = {
+    ...row,
+    price: Number(row.price || 0),
+    durationDays: Number(row.durationDays || 30),
+    enabled: Number(row.enabled ?? 1),
+    sortOrder: Number(row.sortOrder || 0)
+  }
+  vipDialog.value = true
+}
+
+const submitVipPlan = async () => {
+  if (!vipForm.value.planName?.trim()) {
+    ElMessage.warning('请输入套餐名称')
+    return
+  }
+  if (Number(vipForm.value.durationDays) <= 0) {
+    ElMessage.warning('有效天数必须大于0')
+    return
+  }
+  try {
+    const res = await saveVipPlan(vipForm.value)
+    if (res.code === 200) {
+      ElMessage.success('VIP套餐已保存')
+      vipDialog.value = false
+      await loadVipPlanList(true)
+    } else {
+      ElMessage.error(res.message || '保存VIP套餐失败')
+    }
+  } catch (error) {
+    console.error('保存VIP套餐失败:', error)
+    ElMessage.error(error.response?.data?.message || '保存VIP套餐异常')
+  }
+}
+
+const removeVipPlan = async (row) => {
+  try {
+    await ElMessageBox.confirm(`确定删除“${row.planName}”吗？`, '删除VIP套餐', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    const res = await deleteVipPlan({ id: row.id })
+    if (res.code === 200) {
+      ElMessage.success('删除成功')
+      await loadVipPlanList(true)
+    } else {
+      ElMessage.error(res.message || '删除失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除VIP套餐失败:', error)
+      ElMessage.error('删除VIP套餐失败')
+    }
+  }
+}
+
+const formatVipPrice = (price) => {
+  return new Intl.NumberFormat('zh-CN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(Number(price || 0))
+}
+
+// ========== VIP密钥管理 ==========
+const keyGenDialog = ref(false)
+const keyLoading = ref(false)
+const vipKeyList = ref([])
+const keyStats = ref({ unusedCount: 0, usedCount: 0 })
+const keyGenForm = ref({ durationDays: 30, count: 5, note: '' })
+
+const loadVipKeyList = async (forceRefresh = false) => {
+  if (vipKeyList.value.length > 0 && !forceRefresh) return
+  keyLoading.value = true
+  try {
+    const res = await listVipKeys({ userId: userStore.userInfo?.id })
+    if (res.code === 200 && res.data) {
+      vipKeyList.value = res.data.keys || []
+      keyStats.value = { unusedCount: res.data.unusedCount || 0, usedCount: res.data.usedCount || 0 }
+    }
+  } catch (error) {
+    ElMessage.error('加载密钥列表失败')
+  } finally {
+    keyLoading.value = false
+  }
+}
+
+const handleGenerateKeys = async () => {
+  try {
+    const res = await generateVipKeys({
+      userId: userStore.userInfo?.id,
+      durationDays: keyGenForm.value.durationDays,
+      count: keyGenForm.value.count,
+      note: keyGenForm.value.note || ''
+    })
+    if (res.code === 200) {
+      ElMessage.success(res.message || '生成成功')
+      keyGenDialog.value = false
+      await loadVipKeyList(true)
+    } else {
+      ElMessage.error(res.message || '生成失败')
+    }
+  } catch (error) {
+    ElMessage.error('生成密钥失败')
+  }
+}
+
+const copyKeyCode = (code) => {
+  navigator.clipboard.writeText(code).then(() => {
+    ElMessage.success('已复制到剪贴板')
+  }).catch(() => {
+    ElMessage.warning('复制失败，请手动复制')
+  })
+}
+
+const removeVipKey = async (row) => {
+  try {
+    await ElMessageBox.confirm('确定删除该密钥？', '删除密钥', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    const res = await deleteVipKey({ id: row.id })
+    if (res.code === 200) {
+      ElMessage.success('删除成功')
+      await loadVipKeyList(true)
+    } else {
+      ElMessage.error(res.message || '删除失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') ElMessage.error('删除失败')
+  }
+}
+
+const formatDateTime = (value) => {
+  return value ? dayjs(value).format('YYYY-MM-DD HH:mm:ss') : '-'
 }
 
 // 页面加载时初始化 - 修复白屏问题
@@ -1254,9 +1944,112 @@ const deleteBank = (id) => {
 // 模拟数据 & 公共方法
 // ==============================================
 const examList = ref([])
-const violationList = ref([
-  { id: 1, examId: 1, userId: 1001, violationDesc: '切屏超过3次', createTime: '2025-03-20 09:15:22', status: 0 }
-])
+const violationLoading = ref(false)
+const violationList = ref([])
+
+// 聊天室管理
+const chatRoomList = ref([])
+const showCreateRoomDialog = ref(false)
+const newRoomForm = ref({ name: '', college: '', roomLevel: 'FREE' })
+
+const loadViolationRecords = async (forceRefresh = false) => {
+  if (violationList.value.length > 0 && !forceRefresh) return
+  violationLoading.value = true
+  try {
+    const res = await getViolationRecords({ userId: userStore.userInfo?.id })
+    if (res.code === 200) {
+      const records = res.data?.records || res.data || []
+      violationList.value = records.map(item => ({
+        ...item,
+        count: Number(item.count || 0)
+      }))
+    } else {
+      violationList.value = []
+      ElMessage.warning(res.message || '加载违规记录失败')
+    }
+  } catch (error) {
+    violationList.value = []
+    ElMessage.error('加载违规记录异常')
+  } finally {
+    violationLoading.value = false
+  }
+}
+
+const violationStats = computed(() => {
+  const studentIds = new Set(violationList.value.map(item => item.userId).filter(Boolean))
+  return {
+    total: violationList.value.length,
+    studentCount: studentIds.size,
+    forceSubmitCount: violationList.value.filter(item => Number(item.count) > 3).length
+  }
+})
+
+// 聊天室管理方法
+const loadChatRooms = async () => {
+  try {
+    const res = await getRoomsApi()
+    if (res && res.code === 200) chatRoomList.value = res.data || []
+  } catch { ElMessage.error('加载聊天室失败') }
+}
+
+const handleCreateRoom = async () => {
+  if (!newRoomForm.value.name.trim()) { ElMessage.warning('请输入房间名称'); return }
+  try {
+    const res = await createRoomApi({ name: newRoomForm.value.name, college: newRoomForm.value.college || null, roomLevel: newRoomForm.value.roomLevel || 'FREE' })
+    if (res && res.code === 200) {
+      ElMessage.success('创建成功')
+      showCreateRoomDialog.value = false
+      newRoomForm.value = { name: '', college: '', roomLevel: 'FREE' }
+      await loadChatRooms()
+    }
+  } catch { ElMessage.error('创建失败') }
+}
+
+const handleDeleteRoom = async (roomId) => {
+  try {
+    await ElMessageBox.confirm('确定删除该聊天室？', '提示', { type: 'warning' })
+    const res = await deleteRoomApi(roomId)
+    if (res && res.code === 200) { ElMessage.success('删除成功'); await loadChatRooms() }
+  } catch {}
+}
+
+// 编辑聊天室
+const showEditRoomDialog = ref(false)
+const editRoomForm = ref({ id: null, roomName: '', college: '', roomLevel: 'FREE' })
+
+const openEditRoom = (row) => {
+  editRoomForm.value = {
+    id: row.id,
+    roomName: row.roomName || '',
+    college: row.college || '',
+    roomLevel: row.roomLevel || 'FREE'
+  }
+  showEditRoomDialog.value = true
+}
+
+const handleEditRoom = async () => {
+  if (!editRoomForm.value.roomName.trim()) { ElMessage.warning('请输入房间名称'); return }
+  try {
+    const res = await updateRoomApi(editRoomForm.value.id, {
+      roomName: editRoomForm.value.roomName,
+      college: editRoomForm.value.college || null,
+      roomLevel: editRoomForm.value.roomLevel
+    })
+    if (res && res.code === 200) {
+      ElMessage.success('修改成功')
+      showEditRoomDialog.value = false
+      await loadChatRooms()
+    }
+  } catch { ElMessage.error('修改失败') }
+}
+
+const copyText = (text) => {
+  navigator.clipboard.writeText(text).then(() => {
+    ElMessage.success('已复制: ' + text)
+  }).catch(() => {
+    ElMessage.error('复制失败')
+  })
+}
 
 // 自动同步 bankTitle (根据bankId)
 const syncBankTitle = (question) => {
@@ -1584,8 +2377,18 @@ const handleLogout = () => {
   router.push('/login')
 }
 const handleRefresh = () => {
-  // 刷新时重新加载所有核心数据
-  Promise.all([loadQuestionList(true), loadBankList(true), loadExamList(true)])
+  if (currentMenu.value === '6') {
+    loadVipPlanList(true)
+  } else if (currentMenu.value === '7') {
+    loadVipKeyList(true)
+  } else if (currentMenu.value === '4') {
+    loadViolationRecords(true)
+  } else if (currentMenu.value === '10') {
+    loadChatRooms()
+  } else {
+    // 刷新时重新加载所有核心数据
+    Promise.all([loadQuestionList(true), loadBankList(true), loadExamList(true)])
+  }
   ElMessage.success('刷新成功')
 }
 
@@ -1721,6 +2524,49 @@ const handleRefresh = () => {
   margin-bottom: 15px;
   padding-bottom: 10px;
   border-bottom: 1px solid #eee;
+}
+.violation-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.violation-stat {
+  border: 1px solid #e8eef5;
+  border-radius: 8px;
+  padding: 14px 16px;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.violation-stat span {
+  color: #64748b;
+  font-size: 13px;
+}
+.violation-stat strong {
+  color: #1f2937;
+  font-size: 22px;
+}
+.violation-stat.danger strong {
+  color: #f56c6c;
+}
+.student-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.student-cell strong {
+  color: #1f2937;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.student-cell span {
+  color: #94a3b8;
+  font-size: 12px;
 }
 .stat-card {
   text-align: center;
@@ -1960,5 +2806,184 @@ const handleRefresh = () => {
     width: 170px;
     height: 170px;
   }
+}
+
+/* Visual refresh: operational admin console */
+.teacher-admin-container {
+  min-height: 100vh;
+  background: var(--app-bg);
+}
+
+.sidebar {
+  background: var(--app-surface);
+  border-right: 1px solid var(--app-border);
+  box-shadow: none;
+}
+
+.sidebar-header,
+.user-info,
+.logout-btn-wrap {
+  border-color: var(--app-border);
+}
+
+.sidebar-header h3,
+.header-title,
+.page-title {
+  color: var(--app-text);
+  font-weight: 750;
+  letter-spacing: 0;
+}
+
+.user-name {
+  color: var(--app-text);
+  font-weight: 700;
+}
+
+.user-role {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  margin-top: 8px;
+  padding: 3px 10px;
+  color: var(--app-primary);
+  background: var(--app-primary-soft);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.sidebar-menu :deep(.el-menu-item) {
+  margin: 4px 12px;
+  border-radius: 8px;
+  color: var(--app-text-muted);
+  font-weight: 650;
+}
+
+.sidebar-menu :deep(.el-menu-item:hover),
+.sidebar-menu :deep(.el-menu-item.is-active) {
+  color: var(--app-primary);
+  background: var(--app-primary-soft);
+}
+
+.main-content {
+  background:
+      linear-gradient(180deg, #f8fbff 0%, var(--app-bg) 42%, #edf4fb 100%);
+}
+
+.content-body {
+  background: transparent;
+  border-radius: 0;
+}
+
+.page-content {
+  padding: 4px 0 28px;
+}
+
+.page-title {
+  margin-bottom: 18px;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.page-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 18px;
+  padding: 22px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  box-shadow: var(--app-shadow-sm);
+}
+
+.page-title-row .page-title {
+  margin-bottom: 6px;
+}
+
+.page-title-row p {
+  margin: 0;
+  color: var(--app-text-muted);
+}
+
+.stat-card,
+.chart-card,
+.vip-manage-page :deep(.el-table) {
+  border-radius: var(--app-radius);
+  box-shadow: var(--app-shadow-sm);
+}
+
+.stat-card {
+  color: var(--app-text);
+  border: 1px solid var(--app-border);
+}
+
+.chart-card {
+  border-color: var(--app-border);
+}
+
+.summary-metric,
+.segment-row {
+  border-radius: var(--app-radius-sm);
+  background: var(--app-surface-soft);
+  border-color: var(--app-border);
+}
+
+.vip-manage-page :deep(.el-table) {
+  border: 1px solid var(--app-border);
+  overflow: hidden;
+}
+
+.vip-key-page .key-stats {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.vip-key-page :deep(.el-table) {
+  border-radius: var(--app-radius);
+  box-shadow: var(--app-shadow-sm);
+  border: 1px solid var(--app-border);
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .teacher-admin-container {
+    display: block;
+  }
+
+  .main-content {
+    padding: 16px;
+  }
+
+  .page-title-row {
+    flex-direction: column;
+  }
+}
+
+/* 个人中心 */
+.profile-card {
+  max-width: 500px;
+  background: #fff;
+  border-radius: 10px;
+  padding: 30px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.profile-avatar-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.profile-avatar {
+  border: 3px solid var(--app-primary-soft, #e8f0ff);
+}
+
+.profile-form {
+  max-width: 400px;
 }
 </style>

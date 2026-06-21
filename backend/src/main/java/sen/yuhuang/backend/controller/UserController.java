@@ -6,8 +6,20 @@ import sen.yuhuang.backend.common.Result;
 import sen.yuhuang.backend.entity.User;
 import sen.yuhuang.backend.service.UserService;
 
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -43,11 +55,12 @@ public class UserController {
         String username = request.get("username");
         String password = request.get("password");
         String role = request.get("role");
+        String college = request.get("college");
 
         if (username == null || username.trim().isEmpty()) return Result.badRequest("用户名不能为空");
         if (password == null || password.trim().isEmpty()) return Result.badRequest("密码不能为空");
 
-        return userService.register(username,password,role);
+        return userService.register(username,password,role,college);
     }
 
     @PostMapping("/sendEmail")
@@ -113,12 +126,13 @@ public class UserController {
         String realName = request.get("real_name");
         String school = request.get("school");
         String score = request.get("score");
+        String college = request.get("college");
         System.out.println("ssssss,"+userId+"s"+avatar+"S"+email+"S"+major+"s"+phone+"S"+realName+"S"+school+"S"+score);
 
         if (email == null || major == null || phone == null
                 || realName == null || school == null || score == null || userId == null)
             return Result.badRequest("信息不可以存在空的!!!");
-        return userService.updateUserInfo(avatar,email,major,phone,realName,school,score,userId);
+        return userService.updateUserInfo(avatar,email,major,phone,realName,school,score,college,userId);
     }
 
     @PostMapping("/getStatsData")
@@ -126,6 +140,62 @@ public class UserController {
         String userId = request.get("userId");
         if (userId == null || userId.equals("")) return Result.error("加载用户数据用户ID不可为空!");
         return userService.getStatsData(userId);
+    }
+
+    @PostMapping("/uploadAvatar")
+    public Result uploadAvatar(@RequestParam("file") MultipartFile file,
+                               @RequestHeader(value = "X-Username", required = false) String username) {
+        if (file.isEmpty()) {
+            return Result.badRequest("请选择要上传的文件");
+        }
+
+        String contentType = file.getContentType();
+        Set<String> allowedTypes = Set.of("image/jpeg", "image/png", "image/webp");
+        if (contentType == null || !allowedTypes.contains(contentType)) {
+            return Result.badRequest("仅支持 JPG、PNG、WebP 格式");
+        }
+
+        if (file.getSize() > 5 * 1024 * 1024) {
+            return Result.badRequest("文件大小不能超过 5MB");
+        }
+
+        // Determine file extension
+        String ext = "jpg";
+        if ("image/png".equals(contentType)) ext = "png";
+        else if ("image/webp".equals(contentType)) ext = "webp";
+
+        // Generate unique filename
+        String filename = "user_" + (username != null ? username : "unknown") + "_" + UUID.randomUUID().toString().substring(0, 8) + "." + ext;
+
+        // Save file using Files.write to avoid Tomcat temp dir issues
+        Path uploadDir = Paths.get(System.getProperty("user.dir"), "uploads", "avatars");
+        try {
+            Files.createDirectories(uploadDir);
+        } catch (IOException e) {
+            return Result.error("创建上传目录失败: " + e.getMessage());
+        }
+
+        Path target = uploadDir.resolve(filename);
+        try {
+            Files.write(target, file.getBytes());
+        } catch (IOException e) {
+            return Result.error("文件上传失败: " + e.getMessage());
+        }
+
+        String avatarUrl = "/api/auth/avatar/" + filename;
+        return Result.ok(avatarUrl);
+    }
+
+    @GetMapping("/avatar/{filename}")
+    public ResponseEntity<byte[]> getAvatar(@PathVariable String filename) throws IOException {
+        Path filePath = Paths.get(System.getProperty("user.dir"), "uploads", "avatars", filename);
+        if (!Files.exists(filePath)) {
+            return ResponseEntity.notFound().build();
+        }
+        byte[] data = Files.readAllBytes(filePath);
+        String contentType = Files.probeContentType(filePath);
+        if (contentType == null) contentType = "application/octet-stream";
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType(contentType)).body(data);
     }
 
 }

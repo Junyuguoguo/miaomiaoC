@@ -35,7 +35,7 @@ public class QuestionBank {
     /**
      * 题库描述
      */
-    @Column(name = "desc", length = 500)
+    @Column(name = "`desc`", length = 500)
     private String desc;
 
     /**

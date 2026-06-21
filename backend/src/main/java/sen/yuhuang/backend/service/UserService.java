@@ -78,7 +78,7 @@ public class UserService {
         }
     }
 
-    public Result register(String username, String password, String role) {
+    public Result register(String username, String password, String role, String college) {
         // 1.当前userName没有被使用
         User user = userRepository.findUserByUsername(username);
         if (user != null) return Result.badRequest("用户名被占用");
@@ -88,6 +88,7 @@ public class UserService {
                 .username(username)
                 .password(password)
                 .avatar("/avatars/17.jpg")
+                .college(college)
                 .roleId(1L).build();
 
         User save = userRepository.save(newUser);
@@ -217,7 +218,7 @@ public class UserService {
     }
 
     public Result updateUserInfo(String avatar, String email, String major, String phone, String realName,
-                                 String school, String score, String userId) {
+                                 String school, String score, String college, String userId) {
         System.out.println("userId="+userId);
         try {
             // 1.查询用户是否存在
@@ -234,7 +235,8 @@ public class UserService {
                     phone,       // 第5位：phone
                     realName,    // 第6位：realName
                     school,      // 第7位：school
-                    score        // 第8位：score
+                    score,       // 第8位：score
+                    college      // 第9位：college
             );
             return Result.ok().setMessage("更新信息成功！");
         }catch (Exception e){

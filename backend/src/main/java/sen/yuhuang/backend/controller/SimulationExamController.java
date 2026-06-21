@@ -53,6 +53,10 @@ public class SimulationExamController {
             return Result.badRequest("违规记录请求参数异常!");
         return violationRecordService.addViolationRecord(examId,userId,violationType,count);
     }
+    @PostMapping("/violations")
+    public Result violations(@RequestBody(required = false) Map<String,String> request){
+        return violationRecordService.listViolationRecords();
+    }
     @PostMapping("/submitExam")
     public Result submitExam(@RequestBody Map<String,String> request){
         String examId = request.get("examId");

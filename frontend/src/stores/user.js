@@ -80,7 +80,8 @@ export const useUserStore = defineStore('user', {
                 role_id: null,
                 vip_expire_time: null,
                 create_time: null,
-                avatar: '' // 补充 avatar 初始值
+                avatar: '', // 补充 avatar 初始值
+                college: ''
             }),
 
             // 角色名称：优先从 localStorage 获取，无则为空字符串
@@ -120,6 +121,7 @@ export const useUserStore = defineStore('user', {
         getUserSchool: (state) => state.userInfo?.school || '',
         getUserMajor: (state) => state.userInfo?.major || '',
         getUserScore: (state) => state.userInfo?.score || '',
+        getUserCollege: (state) => state.userInfo?.college || '',
         getVipExpireTime: (state) => state.userInfo?.vip_expire_time || null,
         getCreateTime: (state) => state.userInfo?.create_time || ''
     },
@@ -141,8 +143,9 @@ export const useUserStore = defineStore('user', {
                 score: userData.score || '',
                 email: userData.email || '',
                 status: userData.status ?? 1,
-                role_id: userData.role_id || userData.RoleId || null,
+                role_id: userData.role_id || userData.roleId || userData.RoleId || null,
                 avatar: userData.avatar || '',
+                college: userData.college || '',
                 vip_expire_time: userData.vip_expire_time || userData.vipExpireTime || null,
                 create_time: userData.create_time || userData.createTime || null
             }
@@ -162,7 +165,7 @@ export const useUserStore = defineStore('user', {
          * @param {string} email - 邮箱
          * @param {string} avatar - 头像地址
          */
-        updateUserProfile(realName, phone, school, major, score, email, avatar) {
+        updateUserProfile(realName, phone, school, major, score, email, avatar, college) {
             // 1. 构造要更新的字段（统一为下划线命名，匹配数据库/本地存储）
             const updateData = {
                 real_name: realName || '', // 转下划线命名，空值兜底
@@ -171,7 +174,8 @@ export const useUserStore = defineStore('user', {
                 major: major || '',
                 score: score || '',
                 email: email || '',
-                avatar: avatar || ''
+                avatar: avatar || '',
+                college: college || ''
             }
 
             // 2. 合并现有信息和新信息
@@ -226,7 +230,8 @@ export const useUserStore = defineStore('user', {
                 role_id: null,
                 vip_expire_time: null,
                 create_time: null,
-                avatar: '' // 补充 avatar 清空
+                avatar: '', // 补充 avatar 清空
+                college: ''
             }
             this.role = ''
 
@@ -262,7 +267,8 @@ export const useUserStore = defineStore('user', {
                 role_id: null,
                 vip_expire_time: null,
                 create_time: null,
-                avatar: '' // 补充 avatar 初始值
+                avatar: '', // 补充 avatar 初始值
+                college: ''
             })
             this.role = storage.get(storage.KEYS.ROLE, '')
         }

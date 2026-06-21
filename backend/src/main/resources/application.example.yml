@@ -24,7 +24,7 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/miaomiaoc?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
     username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:}
+    password: ${DB_PASSWORD:12345678}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:

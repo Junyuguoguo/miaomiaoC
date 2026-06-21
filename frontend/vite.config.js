@@ -75,7 +75,7 @@ export default defineConfig(({ mode }) => {
         },
 
         optimizeDeps: {
-            include: ['@codemirror/state', '@codemirror/view', '@codemirror/lang-cpp'],
+            include: ['@codemirror/state', '@codemirror/view', '@codemirror/lang-cpp', 'sockjs-client', 'stompjs'],
             force: true
         },
 
@@ -85,8 +85,12 @@ export default defineConfig(({ mode }) => {
             proxy: {
                 '/api': {
                     target: env.VITE_API_BASE_URL || 'http://localhost:8080',
-                    changeOrigin: true,
-                    rewrite: (path) => path.replace(/^\/api/, '')
+                    changeOrigin: true
+                    // 移除 rewrite 规则，保持 /api 前缀
+                },
+                '/uploads': {
+                    target: env.VITE_API_BASE_URL || 'http://localhost:8080',
+                    changeOrigin: true
                 }
             }
         },
@@ -103,6 +107,17 @@ export default defineConfig(({ mode }) => {
             },
             rollupOptions: {
                 output: {
+                    manualChunks(id) {
+                        if (id.includes('node_modules/element-plus') || id.includes('node_modules/@element-plus')) {
+                            return 'element-plus'
+                        }
+                        if (id.includes('node_modules/@codemirror') || id.includes('node_modules/@lezer')) {
+                            return 'codemirror'
+                        }
+                        if (id.includes('node_modules')) {
+                            return 'vendor'
+                        }
+                    },
                     chunkFileNames: 'js/[name]-[hash].js',
                     entryFileNames: 'js/[name]-[hash].js',
                     assetFileNames: '[ext]/[name]-[hash].[ext]'

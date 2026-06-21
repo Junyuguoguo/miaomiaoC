@@ -14,10 +14,7 @@ console.log('生产环境地址：', window.axiosBaseURL)
 const request = axios.create({
     // 核心修改：读取环境变量（Vite 项目），适配开发/生产环境
     baseURL: apiBaseURL,
-    timeout: 10000,
-    headers: {
-        'Content-Type': 'application/json'
-    }
+    timeout: 10000
 })
 // 请求拦截器（保留你原有逻辑，无修改）
 request.interceptors.request.use(
@@ -25,6 +22,18 @@ request.interceptors.request.use(
         const token = localStorage.getItem('user_token') || localStorage.getItem('token')
         if (token) {
             config.headers['Authorization'] = `Bearer ${token}`
+        }
+        // 发送用户名用于后端 token 验证
+        try {
+            const userInfoStr = localStorage.getItem('user_info')
+            if (userInfoStr && userInfoStr !== 'undefined') {
+                const userInfo = JSON.parse(userInfoStr)
+                if (userInfo.username) {
+                    config.headers['X-Username'] = userInfo.username
+                }
+            }
+        } catch (e) {
+            // 忽略解析错误
         }
         return config
     },

@@ -67,6 +67,9 @@ public class User {
     @Column(name = "avatar",length = 255)
     private String avatar;
 
+    @Column(name = "college", length = 100)
+    private String college;
+
     // ========== 辅助方法 ==========
 
     /**
