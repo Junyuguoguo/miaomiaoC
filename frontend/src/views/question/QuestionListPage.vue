@@ -1,12 +1,35 @@
 <template>
   <div class="question-list-container">
-    <!-- 顶部筛选栏 -->
+    <section class="list-hero">
+      <div>
+        <button class="back-link" type="button" @click="handleBack">
+          <el-icon><ArrowLeft /></el-icon>
+          返回题库
+        </button>
+        <p class="eyebrow">Question Bank</p>
+        <h1>{{ bankTitle }} - 题目列表</h1>
+        <p>按难度和关键词筛选题目，进入机试练习区后可直接编写并运行 C 语言代码。</p>
+      </div>
+      <div class="list-hero-stats">
+        <div>
+          <strong>{{ originalQuestionList.length }}</strong>
+          <span>题目总数</span>
+        </div>
+        <div>
+          <strong>{{ filteredQuestionList.length }}</strong>
+          <span>当前结果</span>
+        </div>
+        <div>
+          <strong>{{ averageAcPercent }}%</strong>
+          <span>平均通过率</span>
+        </div>
+      </div>
+    </section>
+
     <div class="filter-bar">
       <div class="filter-left">
-        <h2 class="page-title">{{ bankTitle }} - 题目列表</h2>
-        <!-- 难度筛选 -->
         <div class="filter-group">
-          <span class="filter-label">难度：</span>
+          <span class="filter-label">难度</span>
           <el-button-group>
             <el-button
                 size="small"
@@ -32,13 +55,12 @@
         </div>
       </div>
       <div class="filter-right">
-        <!-- 搜索框 -->
         <el-input
             v-model="searchKeyword"
-            placeholder="输入关键词模糊查询"
+            placeholder="搜索题目ID或题目描述"
             clearable
-            size="small"
-            style="width: 240px;"
+            size="large"
+            class="question-search"
             @clear="handleSearchClear"
             @keyup.enter="handleSearch"
         >
@@ -46,11 +68,6 @@
             <el-button icon="Search" @click="handleSearch" />
           </template>
         </el-input>
-        <!-- 返回题库按钮 -->
-        <el-button type="default" size="small" @click="handleBack" style="margin-left: 12px;">
-          <el-icon><ArrowLeft /></el-icon>
-          返回主页
-        </el-button>
       </div>
     </div>
 
@@ -84,16 +101,12 @@
         <el-table-column prop="acRate" label="AC通过率" min-width="220">
           <template #default="{ row }">
             <div class="ac-rate-container">
-              <!-- 缩短进度条宽度（占30%） -->
               <el-progress
                   :percentage="Math.round(getValidAcRate(row.AC) * 100)"
                   :color="getAcRateColor(getValidAcRate(row.AC))"
-                  :stroke-width="16"
-                  style="width: 30%;"
+                  :stroke-width="12"
               />
-              <!-- 通过率文本 + 练习按钮（占30%） -->
               <div class="ac-rate-actions">
-                <!-- 练习题目按钮 -->
                 <el-button
                     type="primary"
                     size="small"
@@ -110,7 +123,6 @@
       </el-table>
     </div>
 
-    <!-- 分页 - 修复：只有当有数据时才显示 -->
     <div class="pagination-container" v-if="filteredQuestionList.length > 0">
       <el-pagination
           v-model:current-page="currentPage"
@@ -123,7 +135,6 @@
       />
     </div>
 
-    <!-- 空状态提示 -->
     <div v-else-if="!loading" class="empty-state">
       <el-empty description="暂无题目数据" />
     </div>
@@ -181,6 +192,12 @@ const paginatedQuestionList = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value
   const end = start + pageSize.value
   return filteredQuestionList.value.slice(start, end)
+})
+
+const averageAcPercent = computed(() => {
+  if (!originalQuestionList.value.length) return 0
+  const total = originalQuestionList.value.reduce((sum, item) => sum + getValidAcRate(item.AC), 0)
+  return Math.round((total / originalQuestionList.value.length) * 100)
 })
 
 // 加载题目列表
@@ -309,7 +326,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* 在style标签中添加 */
 .question-title {
   display: flex;
   align-items: center;
@@ -333,18 +349,112 @@ onMounted(async () => {
   white-space: nowrap;
 }
 .question-list-container {
-  padding: 20px;
-  background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+  min-height: 100vh;
+  padding: 28px;
+  background:
+      radial-gradient(circle at 18% 8%, rgba(37, 99, 235, 0.10), transparent 30%),
+      radial-gradient(circle at 88% 0%, rgba(124, 92, 255, 0.09), transparent 26%),
+      linear-gradient(180deg, #f8fbff 0%, #f3f7fe 48%, #edf4fb 100%);
+  color: var(--app-text);
 }
 
-/* 筛选栏 */
+.list-hero {
+  min-height: 210px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  gap: 24px;
+  align-items: center;
+  padding: 32px;
+  margin-bottom: 18px;
+  background:
+      linear-gradient(120deg, rgba(255, 255, 255, 0.94), rgba(245, 248, 255, 0.84)),
+      radial-gradient(circle at 82% 46%, rgba(124, 92, 255, 0.20), transparent 36%);
+  border: 1px solid rgba(207, 220, 240, 0.88);
+  border-radius: 8px;
+  box-shadow: 0 18px 42px rgba(40, 78, 142, 0.09);
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 18px;
+  padding: 0;
+  color: var(--app-primary);
+  background: transparent;
+  border: 0;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--app-primary);
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.list-hero h1 {
+  margin: 0;
+  color: var(--app-text);
+  font-size: clamp(30px, 4vw, 46px);
+  font-weight: 950;
+  line-height: 1.15;
+  letter-spacing: 0;
+}
+
+.list-hero p {
+  max-width: 680px;
+  margin: 14px 0 0;
+  color: var(--app-text-muted);
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+.list-hero-stats {
+  display: grid;
+  gap: 12px;
+}
+
+.list-hero-stats div {
+  min-height: 76px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(207, 220, 240, 0.86);
+  border-radius: 8px;
+  box-shadow: 0 12px 28px rgba(40, 78, 142, 0.06);
+}
+
+.list-hero-stats strong {
+  color: var(--app-text);
+  font-size: 30px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.list-hero-stats span {
+  color: var(--app-text-muted);
+  font-size: 13px;
+  font-weight: 750;
+}
+
 .filter-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(207, 220, 240, 0.88);
+  border-radius: 8px;
+  box-shadow: 0 14px 34px rgba(40, 78, 142, 0.08);
   flex-wrap: wrap;
   gap: 16px;
 }
@@ -371,7 +481,8 @@ onMounted(async () => {
 
 .filter-label {
   font-size: 14px;
-  color: #666;
+  color: var(--app-text-muted);
+  font-weight: 800;
 }
 
 .filter-right {
@@ -380,9 +491,14 @@ onMounted(async () => {
   gap: 12px;
 }
 
-/* 题目列表 */
 .question-table-container {
   margin-bottom: 20px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(207, 220, 240, 0.88);
+  border-radius: 8px;
+  box-shadow: 0 14px 34px rgba(40, 78, 142, 0.08);
+  overflow: hidden;
 }
 
 .question-row {
@@ -391,7 +507,7 @@ onMounted(async () => {
 }
 
 .question-row:hover {
-  background-color: #f5f7fa !important;
+  background-color: #f4f8ff !important;
 }
 
 .question-title {
@@ -405,20 +521,25 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 12px;
+}
+
+.ac-rate-container :deep(.el-progress) {
+  flex: 1;
+  min-width: 120px;
 }
 
 .ac-rate-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  width: 30%;
+  flex: 0 0 auto;
 }
 
-/* 分页 */
 .pagination-container {
   display: flex;
   justify-content: flex-end;
+  padding: 16px 4px 0;
 }
 
 .empty-state {
@@ -426,8 +547,16 @@ onMounted(async () => {
   text-align: center;
 }
 
-/* 响应式适配 */
 @media (max-width: 768px) {
+  .question-list-container {
+    padding: 16px;
+  }
+
+  .list-hero {
+    grid-template-columns: 1fr;
+    padding: 22px;
+  }
+
   .filter-bar {
     flex-direction: column;
     align-items: flex-start;
@@ -442,6 +571,10 @@ onMounted(async () => {
   .filter-right {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .question-search {
+    width: 100%;
   }
 
   .ac-rate-container {

@@ -2,26 +2,25 @@
   <div class="practice-doing-container" ref="containerRef">
     <!-- 顶部栏 -->
     <div class="top-bar">
-      <div class="system-title">{{ title }}@{{ version }}</div>
+      <div class="practice-title-block">
+        <div class="system-title">{{ title }}@{{ version }}</div>
+        <span>题库练习 / 编程题 / C语言机试环境</span>
+      </div>
       <div class="top-right-placeholder">
-        <!-- 新增：返回题目列表按钮 -->
         <el-button
+            class="back-question-btn"
             type="default"
-            size="small"
             @click="goBackQuestionList"
-            style="margin-right: 8px"
         >
+          <el-icon><ArrowDown /></el-icon>
           返回
         </el-button>
-        <!-- 提交本题相关操作 -->
         <div class="question-actions">
-          <!-- 初始状态：显示提交按钮 -->
           <template v-if="showSubmitConfirm === 0">
-            <el-button type="primary" size="small" @click="triggerSubmitConfirm" :loading="isSubmitting">
+            <el-button type="primary" class="submit-question-btn" @click="triggerSubmitConfirm" :loading="isSubmitting">
               提交本题
             </el-button>
           </template>
-          <!-- 确认提交本题：显示是/否按钮 -->
           <template v-else-if="showSubmitConfirm === 1">
             <div class="confirm-step">
               <span class="confirm-text">确认提交本题？</span>
@@ -44,11 +43,16 @@
           <div class="accepted-badge">
             得分: {{ currentQuestionScore }}/{{ currentQuestion.fullScore || 100 }}分
           </div>
+          <div class="question-meta-tags">
+            <span>基础语法</span>
+            <span>C语言</span>
+          </div>
           <div v-if="submitTipText" class="tip-box" :class="submitTipType">
             {{ submitTipText }}
           </div>
         </div>
         <div class="question-content" v-if="currentQuestion">
+          <h2>{{ currentQuestion.questionTitle || currentQuestion.title || '编程题' }}</h2>
           <h3>题目描述</h3>
           <p>{{ currentQuestion.questionDesc }}</p>
           <h3>提示</h3>
@@ -78,6 +82,7 @@
             <div class="editor-title">
               <el-icon><Document /></el-icon>
               <span>main.c</span>
+              <em>C语言编辑器</em>
             </div>
             <!-- 保存按钮（带星号提示代码未保存） -->
             <button
@@ -103,6 +108,7 @@
                   :disabled="currentQuestion.isSubmitted || isLoading"
                   :loading="isLoading"
                   size="small"
+                  class="run-code-btn"
               >
                 运行测试
               </el-button>
@@ -1123,6 +1129,317 @@ onUnmounted(() => {
   }
   .code-card {
     height: 350px;
+  }
+}
+
+/* Machine-exam visual refresh */
+.practice-doing-container {
+  background:
+      radial-gradient(circle at 18% 8%, rgba(37, 99, 235, 0.12), transparent 30%),
+      radial-gradient(circle at 92% 0%, rgba(124, 92, 255, 0.10), transparent 26%),
+      linear-gradient(180deg, #f8fbff 0%, #f3f7fe 48%, #edf4fb 100%);
+  color: var(--app-text);
+}
+
+.top-bar {
+  min-height: 74px;
+  padding: 14px 28px;
+  background: rgba(255, 255, 255, 0.82);
+  border-bottom: 1px solid rgba(207, 220, 240, 0.88);
+  box-shadow: 0 12px 28px rgba(40, 78, 142, 0.06);
+  backdrop-filter: blur(18px);
+}
+
+.practice-title-block {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.system-title {
+  color: var(--app-text);
+  font-size: 19px;
+  font-weight: 900;
+  text-shadow: none;
+}
+
+.practice-title-block span {
+  color: var(--app-text-muted);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.top-right-placeholder {
+  gap: 12px;
+}
+
+.back-question-btn,
+.submit-question-btn {
+  min-height: 38px;
+  border-radius: 8px;
+  font-weight: 800;
+}
+
+.submit-question-btn {
+  border: 0;
+  background: linear-gradient(135deg, #1f7bff, #7c5cff);
+  box-shadow: 0 12px 26px rgba(37, 99, 235, 0.22);
+}
+
+.main-content {
+  padding: 22px 28px 28px;
+  gap: 20px;
+}
+
+.left-panel {
+  width: 42%;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(207, 220, 240, 0.88);
+  border-radius: 8px;
+  box-shadow: 0 16px 38px rgba(40, 78, 142, 0.10);
+}
+
+.question-header {
+  padding: 18px 22px;
+  background: linear-gradient(180deg, rgba(248, 251, 255, 0.96), rgba(255, 255, 255, 0.92));
+  border-bottom: 1px solid rgba(218, 229, 245, 0.92);
+}
+
+.accepted-badge {
+  color: var(--app-success);
+  background: rgba(22, 163, 74, 0.10);
+  border: 1px solid rgba(22, 163, 74, 0.18);
+  border-radius: 999px;
+  font-weight: 850;
+}
+
+.question-meta-tags {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.question-meta-tags span {
+  display: inline-flex;
+  padding: 4px 10px;
+  color: var(--app-primary);
+  background: var(--app-primary-soft);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.question-content {
+  padding: 28px;
+}
+
+.question-content h2 {
+  margin: 0 0 22px;
+  color: var(--app-text);
+  font-size: 28px;
+  font-weight: 900;
+  line-height: 1.22;
+  letter-spacing: 0;
+}
+
+.question-content h3 {
+  margin: 24px 0 12px;
+  color: var(--app-text);
+  border-left: 4px solid var(--app-primary);
+  font-weight: 850;
+}
+
+.question-content p {
+  color: #4c5c73;
+  font-size: 15px;
+}
+
+.sample {
+  background: #f7faff;
+  border: 1px solid rgba(218, 229, 245, 0.95);
+  border-radius: 8px;
+}
+
+.sample-content {
+  color: #20304a;
+  background: #fff;
+  border-color: rgba(207, 220, 240, 0.92);
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+}
+
+.right-panel {
+  width: 58%;
+  gap: 14px;
+}
+
+.code-card,
+.syntax-check,
+.result-panel {
+  border-radius: 8px;
+  border: 1px solid rgba(66, 105, 160, 0.24);
+  box-shadow: 0 18px 42px rgba(7, 24, 46, 0.18);
+}
+
+.code-card {
+  min-height: 480px;
+  background:
+      linear-gradient(180deg, #07182e 0%, #0b1f39 100%);
+}
+
+.editor-header {
+  min-height: 64px;
+  padding: 14px 18px;
+  background: rgba(8, 27, 51, 0.96);
+  border-bottom: 1px solid rgba(91, 142, 255, 0.22);
+}
+
+.editor-title {
+  color: #f5f9ff;
+  font-weight: 850;
+}
+
+.editor-title em {
+  margin-left: 8px;
+  color: #8ea5c5;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.save-btn {
+  min-height: 34px;
+  padding: 0 13px;
+  border-radius: 8px;
+  background: rgba(91, 142, 255, 0.16);
+  border: 1px solid rgba(91, 142, 255, 0.34);
+  color: #dbeafe;
+  font-weight: 800;
+}
+
+.save-btn:hover {
+  background: rgba(91, 142, 255, 0.26);
+}
+
+.run-code-btn {
+  border: 0;
+  background: linear-gradient(135deg, #1f7bff, #7c5cff);
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.22);
+}
+
+.code-editor {
+  background: #07182e;
+}
+
+.syntax-check {
+  background: #101f35;
+  border-color: rgba(245, 158, 11, 0.28);
+  animation: resultSlideIn 260ms ease both;
+}
+
+.error-item {
+  background: rgba(239, 68, 68, 0.12);
+  border-left-color: #ef4444;
+  color: #fecaca;
+}
+
+.result-panel {
+  background: #101f35;
+  animation: resultSlideIn 260ms ease both;
+}
+
+.panel-header {
+  background: rgba(8, 27, 51, 0.96);
+  border-bottom-color: rgba(91, 142, 255, 0.22);
+}
+
+.panel-header:hover {
+  background: #0c2342;
+}
+
+.panel-content {
+  background:
+      linear-gradient(180deg, rgba(7, 24, 46, 0.98), rgba(10, 31, 57, 0.98));
+}
+
+.tip-box {
+  border-radius: 999px;
+  font-weight: 800;
+}
+
+.confirm-step {
+  min-height: 38px;
+  padding: 0 10px;
+  background: rgba(255, 255, 255, 0.68);
+  border: 1px solid rgba(207, 220, 240, 0.88);
+  border-radius: 8px;
+}
+
+@keyframes resultSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 1200px) {
+  .left-panel {
+    width: 44%;
+  }
+
+  .right-panel {
+    width: 56%;
+  }
+}
+
+@media (max-width: 992px) {
+  .practice-doing-container {
+    height: auto;
+    min-height: 100vh;
+    overflow: auto;
+  }
+
+  .top-bar {
+    align-items: flex-start;
+    gap: 12px;
+    flex-direction: column;
+  }
+
+  .top-right-placeholder {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .main-content {
+    overflow: visible;
+    padding: 16px;
+  }
+
+  .left-panel,
+  .right-panel {
+    width: 100%;
+  }
+
+  .left-panel {
+    max-height: none;
+  }
+
+  .code-card {
+    min-height: 420px;
+    height: 420px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .syntax-check,
+  .result-panel {
+    animation: none;
   }
 }
 </style>
