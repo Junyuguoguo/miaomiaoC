@@ -124,15 +124,15 @@
               {{ connected ? '已连接' : '未连接' }}
             </span>
             <button
-              class="header-icon-btn info-toggle-btn"
+              class="info-toggle-btn"
               :class="{ active: showInfoPanel }"
               @click="toggleInfoPanel"
-              :title="showInfoPanel ? '隐藏群组信息' : '显示群组信息'"
             >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                 <path v-if="showInfoPanel" d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                 <path v-else d="M10 3l-5 5 5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
+              <span>群组信息</span>
             </button>
           </div>
         </div>
@@ -1607,9 +1607,31 @@ onUnmounted(() => {
 }
 
 .info-toggle-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid rgba(207, 220, 240, 0.88);
+  border-radius: 6px;
+  background: #fff;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.info-toggle-btn:hover {
+  background: var(--app-primary-soft);
+  color: var(--app-primary);
+  border-color: rgba(37, 99, 235, 0.3);
+}
+
+.info-toggle-btn.active {
+  background: var(--app-primary-soft);
+  color: var(--app-primary);
+  border-color: rgba(37, 99, 235, 0.4);
 }
 
 .room-badge {
