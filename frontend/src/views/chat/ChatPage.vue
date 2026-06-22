@@ -41,7 +41,6 @@
               <span v-if="msg.senderRole === 4" class="role-badge admin-badge">管理员</span>
               <span v-else-if="msg.senderRole === 3" class="role-badge teacher-badge">教师</span>
               <span v-else-if="msg.senderRole === 2" class="role-badge vip-badge">VIP学生</span>
-              <span class="level-badge">{{ getSenderLevel(msg) }}</span>
               <span class="message-time">{{ formatMessageTime(msg.createTime) }}</span>
             </div>
             <div class="bubble" :class="getBubbleClass(msg)">
@@ -203,15 +202,6 @@ const shouldShowTime = (idx) => {
 const getSenderName = (msg) => {
   if (msg.senderId === currentUserId.value) return userStore.getUserName || msg.senderName || '我'
   return msg.senderName || '匿名用户'
-}
-
-const getSenderLevel = (msg) => {
-  const level = msg.senderLevel || msg.level || msg.userLevel
-  if (level) return String(level).startsWith('LV.') ? level : `LV.${level}`
-  if (msg.senderRole === 4) return 'LV.9'
-  if (msg.senderRole === 3) return 'LV.8'
-  if (msg.senderRole === 2) return 'LV.6'
-  return 'LV.4'
 }
 
 const formatMessageTime = (time) => {
