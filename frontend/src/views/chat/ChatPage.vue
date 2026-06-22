@@ -46,7 +46,7 @@
             <div class="bubble" :class="getBubbleClass(msg)">
               <!-- 图片消息 -->
               <div v-if="msg.messageType === 'IMAGE'" class="bubble-image">
-                <img :src="fixFileUrl(msg.content)" alt="图片" @click="previewImage(fixFileUrl(msg.content))" />
+                <img :src="fixFileUrl(msg.content)" alt="图片" @click="previewImageUrl = fixFileUrl(msg.content)" />
               </div>
               <!-- 代码文件消息 -->
               <div v-else-if="msg.messageType === 'CODE'" class="bubble-code">
@@ -135,6 +135,12 @@
         @click="showPanel = !showPanel"
       >+</button>
     </div>
+
+    <!-- Image preview overlay -->
+    <div v-if="previewImageUrl" class="image-preview-overlay" @click.self="previewImageUrl = ''">
+      <img :src="previewImageUrl" class="image-preview-full" @wheel.prevent="handlePreviewWheel" />
+      <button class="image-preview-close" @click="previewImageUrl = ''">&times;</button>
+    </div>
   </div>
 </template>
 
@@ -165,6 +171,7 @@ const showPanel = ref(false)
 const likedMessageKeys = ref([])
 const fileInputRef = ref(null)
 const uploading = ref(false)
+const previewImageUrl = ref('')
 
 const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
 
@@ -186,9 +193,25 @@ const formatFileSize = (bytes) => {
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
 }
 
-const previewImage = (url) => {
-  window.open(url, '_blank')
+const handlePreviewWheel = (e) => {
+  const img = e.currentTarget
+  const scale = parseFloat(img.dataset.scale || '1')
+  const delta = e.deltaY > 0 ? -0.15 : 0.15
+  const next = Math.min(Math.max(0.3, scale + delta), 3)
+  img.dataset.scale = next
+  img.style.transform = `scale(${next})`
 }
+
+onMounted(async () => {
+  await loadMessages(0)
+  if (chatType.value === 'private' && route.query.userId) {
+    markAllAsRead(Number(route.query.userId)).catch(console.error)
+  }
+  await connectWebSocket()
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && previewImageUrl.value) previewImageUrl.value = ''
+  })
+})
 
 const goPrivateChat = (userId, userName) => {
   const query = { userId }
@@ -470,14 +493,6 @@ const connectWebSocket = async () => {
     ElMessage.error('实时消息连接失败，历史消息仍可查看')
   }
 }
-
-onMounted(async () => {
-  await loadMessages(0)
-  if (chatType.value === 'private' && route.query.userId) {
-    markAllAsRead(Number(route.query.userId)).catch(console.error)
-  }
-  await connectWebSocket()
-})
 
 onUnmounted(() => {
   // chatWebSocket.disconnect() — keep connection alive if desired
@@ -1048,5 +1063,47 @@ onUnmounted(() => {
 
 .file-download-btn:hover {
   opacity: 0.85;
+}
+
+.image-preview-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-out;
+}
+
+.image-preview-full {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 4px;
+  cursor: default;
+  transition: transform 0.2s ease;
+  transform-origin: center center;
+}
+
+.image-preview-close {
+  position: fixed;
+  top: 20px;
+  right: 28px;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-preview-close:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 </style>

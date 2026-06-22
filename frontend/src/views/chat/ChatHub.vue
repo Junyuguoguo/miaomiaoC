@@ -171,7 +171,7 @@
                   <span class="message-time">{{ formatMessageTime(msg.createTime) }}</span>
                 </div>
                 <div class="bubble" :class="getBubbleClass(msg)">
-                  <div v-if="msg.messageType === 'IMAGE'" class="bubble-image"><img :src="msg.content" alt="图片" @click="window.open(msg.content, '_blank')" /></div>
+                  <div v-if="msg.messageType === 'IMAGE'" class="bubble-image"><img :src="msg.content" alt="图片" @click="previewImageUrl = msg.content" /></div>
                   <div v-else-if="msg.messageType === 'CODE'" class="bubble-code"><div class="code-header"><span class="code-filename">{{ msg.fileName || 'code' }}</span><a :href="msg.content" download class="code-download">下载</a></div><pre class="code-preview"><code>{{ msg.codeContent || '加载中...' }}</code></pre></div>
                   <div v-else-if="msg.messageType === 'FILE'" class="bubble-file"><div class="file-icon">&#128196;</div><div class="file-info"><span class="file-name">{{ msg.fileName || '文件' }}</span><span class="file-size">{{ formatFileSize(msg.fileSize) }}</span></div><a :href="msg.content" download class="file-download-btn">下载</a></div>
                   <template v-else>{{ msg.content }}</template>
@@ -488,6 +488,11 @@
         </div>
       </div>
     </div>
+
+    <div v-if="previewImageUrl" class="image-preview-overlay" @click.self="previewImageUrl = ''">
+      <img :src="previewImageUrl" class="image-preview-full" @wheel.prevent="handlePreviewWheel" />
+      <button class="image-preview-close" @click="previewImageUrl = ''">&times;</button>
+    </div>
   </div>
 </template>
 
@@ -566,6 +571,7 @@ const noticeTimeStore = ref({})
 const roomForm = ref({ name: '', college: '', roomLevel: 'FREE' })
 const roomMembers = ref([])
 const uploading = ref(false)
+const previewImageUrl = ref('')
 const INFO_PANEL_KEY = 'miaomiao_chat_info_panel_visible'
 const showInfoPanel = ref(localStorage.getItem(INFO_PANEL_KEY) === 'true')
 
@@ -705,6 +711,15 @@ const sendFileMessage = (messageType, url, fileName, fileSize) => {
     messages.value.pop()
     ElMessage.warning('发送失败，请检查连接状态')
   }
+}
+
+const handlePreviewWheel = (e) => {
+  const img = e.currentTarget
+  const scale = parseFloat(img.dataset.scale || '1')
+  const delta = e.deltaY > 0 ? -0.15 : 0.15
+  const next = Math.min(Math.max(0.3, scale + delta), 3)
+  img.dataset.scale = next
+  img.style.transform = `scale(${next})`
 }
 
 const getMemberRoleText = (member) => {
@@ -1200,6 +1215,9 @@ onMounted(async () => {
   await loadRooms()
   connectAndSubscribe()
   loadContacts()
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && previewImageUrl.value) previewImageUrl.value = ''
+  })
 })
 
 onUnmounted(() => {
@@ -2804,4 +2822,46 @@ onUnmounted(() => {
 }
 
 .file-download-btn:hover { opacity: 0.85; }
+
+.image-preview-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-out;
+}
+
+.image-preview-full {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 4px;
+  cursor: default;
+  transition: transform 0.2s ease;
+  transform-origin: center center;
+}
+
+.image-preview-close {
+  position: fixed;
+  top: 20px;
+  right: 28px;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-preview-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
 </style>
