@@ -190,3 +190,17 @@ export function getRoomMembers(roomId) {
 export function updateRoomNotice(roomId, notice) {
     return request({ url: `/api/chat/rooms/${roomId}/notice`, method: 'put', data: { notice } })
 }
+
+/**
+ * 上传聊天文件（图片/代码/文件）
+ */
+export function uploadChatFile(file) {
+    const formData = new FormData()
+    formData.append('file', file)
+    return request({
+        url: '/api/chat/upload',
+        method: 'post',
+        data: formData,
+        headers: { 'Content-Type': 'multipart/form-data' }
+    })
+}

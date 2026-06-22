@@ -171,7 +171,10 @@
                   <span class="message-time">{{ formatMessageTime(msg.createTime) }}</span>
                 </div>
                 <div class="bubble" :class="getBubbleClass(msg)">
-                  {{ msg.content }}
+                  <div v-if="msg.messageType === 'IMAGE'" class="bubble-image"><img :src="msg.content" alt="图片" @click="window.open(msg.content, '_blank')" /></div>
+                  <div v-else-if="msg.messageType === 'CODE'" class="bubble-code"><div class="code-header"><span class="code-filename">{{ msg.fileName || 'code' }}</span><a :href="msg.content" download class="code-download">下载</a></div><pre class="code-preview"><code>{{ msg.codeContent || '加载中...' }}</code></pre></div>
+                  <div v-else-if="msg.messageType === 'FILE'" class="bubble-file"><div class="file-icon">&#128196;</div><div class="file-info"><span class="file-name">{{ msg.fileName || '文件' }}</span><span class="file-size">{{ formatFileSize(msg.fileSize) }}</span></div><a :href="msg.content" download class="file-download-btn">下载</a></div>
+                  <template v-else>{{ msg.content }}</template>
                 </div>
                 <div class="message-actions">
                   <button
@@ -194,6 +197,10 @@
 
         <!-- Input bar -->
         <div class="input-bar">
+          <button class="upload-btn" @click="$refs.fileInput.click()" title="发送文件">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke="var(--app-primary)" stroke-width="1.8"/><circle cx="8.5" cy="8.5" r="1.5" fill="var(--app-primary)"/><path d="M21 15l-5-5L5 21" stroke="var(--app-primary)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <input ref="fileInput" type="file" style="display:none" accept="image/*,.c,.cpp,.h,.hpp,.java,.py,.js,.ts,.html,.css,.json,.xml,.sql,.sh,.go,.rs,.txt" @change="handleFileUpload" />
           <input
             ref="messageInputRef"
             v-model="inputMessage"
@@ -503,7 +510,8 @@ import {
   getRoomSettings,
   updateRoom,
   getRoomMembers,
-  updateRoomNotice
+  updateRoomNotice,
+  uploadChatFile
 } from '@/api/chat'
 import chatWebSocket from '@/utils/chat-websocket'
 import dayjs from 'dayjs'
@@ -557,6 +565,7 @@ const noticeStore = ref({})
 const noticeTimeStore = ref({})
 const roomForm = ref({ name: '', college: '', roomLevel: 'FREE' })
 const roomMembers = ref([])
+const uploading = ref(false)
 const INFO_PANEL_KEY = 'miaomiao_chat_info_panel_visible'
 const showInfoPanel = ref(localStorage.getItem(INFO_PANEL_KEY) === 'true')
 
@@ -637,6 +646,65 @@ const replyToMessage = (msg) => {
   nextTick(() => {
     messageInputRef.value?.focus?.()
   })
+}
+
+const formatFileSize = (bytes) => {
+  if (!bytes) return ''
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+}
+
+const handleFileUpload = async (e) => {
+  const file = e.target.files?.[0]
+  if (!file) return
+  e.target.value = ''
+  uploading.value = true
+  try {
+    const res = await uploadChatFile(file)
+    if (res && res.code === 200) {
+      const { url, messageType, fileName, fileSize } = res.data
+      sendFileMessage(messageType, url, fileName, fileSize)
+    } else {
+      ElMessage.error(res?.message || '上传失败')
+    }
+  } catch (err) {
+    ElMessage.error('上传失败')
+  } finally {
+    uploading.value = false
+  }
+}
+
+const sendFileMessage = (messageType, url, fileName, fileSize) => {
+  if (!currentRoom.value) {
+    ElMessage.warning('请先选择聊天室')
+    return
+  }
+  const optimisticMsg = {
+    id: Date.now(),
+    senderId: currentUserId.value,
+    senderName: userStore.getUserName || '',
+    senderAvatar: userStore.getUserAvatar || '',
+    senderRole: userStore.getUserRoleId,
+    content: url,
+    messageType,
+    fileName,
+    fileSize,
+    createTime: new Date().toISOString()
+  }
+  messages.value.push(optimisticMsg)
+  scrollToBottom()
+  const sent = chatWebSocket.sendRoomMessage({
+    roomId: currentRoom.value.id,
+    messageType,
+    content: url,
+    fileName,
+    fileSize
+  })
+  if (!sent) {
+    messages.value.pop()
+    ElMessage.warning('发送失败，请检查连接状态')
+  }
 }
 
 const getMemberRoleText = (member) => {
@@ -2641,4 +2709,99 @@ onUnmounted(() => {
     grid-template-columns: 1fr;
   }
 }
+
+.upload-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(207, 220, 240, 0.88);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.15s;
+}
+
+.upload-btn:hover {
+  border-color: var(--app-primary);
+}
+
+.bubble-image img {
+  max-width: 240px;
+  max-height: 240px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: block;
+}
+
+.bubble-image img:hover { opacity: 0.9; }
+
+.bubble-code { min-width: 260px; max-width: 400px; }
+
+.code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+
+.code-filename { font-size: 12px; font-weight: 700; color: #64748b; }
+
+.code-download { font-size: 11px; color: var(--app-primary); text-decoration: none; font-weight: 700; }
+.code-download:hover { text-decoration: underline; }
+
+.code-preview {
+  margin: 0;
+  padding: 8px;
+  background: #1e293b;
+  color: #e2e8f0;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-x: auto;
+  max-height: 200px;
+  overflow-y: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.code-preview code { white-space: pre; }
+
+.bubble-file {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 200px;
+}
+
+.file-icon { font-size: 28px; flex-shrink: 0; }
+.file-info { flex: 1; min-width: 0; }
+
+.file-name {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1f2a44;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-size { font-size: 11px; color: #94a3b8; }
+
+.file-download-btn {
+  padding: 4px 12px;
+  border-radius: 6px;
+  background: var(--app-primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.file-download-btn:hover { opacity: 0.85; }
 </style>

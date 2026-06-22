@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import sen.yuhuang.backend.common.Result;
 import sen.yuhuang.backend.dto.ChatMessageResponse;
 import sen.yuhuang.backend.entity.ChatRoom;
@@ -286,5 +287,58 @@ public class ChatController {
                 body.get("isPinned"),
                 body.get("isMuted"));
         return Result.ok(setting);
+    }
+
+    /**
+     * 上传聊天文件（图片/代码/文件）
+     */
+    @PostMapping("/upload")
+    public Result uploadChatFile(@RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) return Result.badRequest("文件不能为空");
+
+        String originalName = file.getOriginalFilename();
+        String ext = "";
+        if (originalName != null && originalName.contains(".")) {
+            ext = originalName.substring(originalName.lastIndexOf(".") + 1).toLowerCase();
+        }
+
+        // 判断文件类型
+        String messageType;
+        if (java.util.Set.of("jpg", "jpeg", "png", "gif", "webp", "bmp").contains(ext)) {
+            messageType = "IMAGE";
+        } else if (java.util.Set.of("c", "cpp", "h", "hpp", "java", "py", "js", "ts", "html", "css", "json", "xml", "sql", "sh", "go", "rs").contains(ext)) {
+            messageType = "CODE";
+        } else {
+            messageType = "FILE";
+        }
+
+        // 校验大小
+        long maxSize = messageType.equals("IMAGE") ? 5 * 1024 * 1024 : 2 * 1024 * 1024;
+        if (file.getSize() > maxSize) {
+            return Result.badRequest(messageType.equals("IMAGE") ? "图片不能超过5MB" : "文件不能超过2MB");
+        }
+
+        try {
+            String subDir = messageType.equals("IMAGE") ? "chat_images" : "chat_files";
+            String baseDir = System.getProperty("user.dir") + "/uploads/" + subDir + "/";
+            java.io.File dir = new java.io.File(baseDir);
+            if (!dir.exists()) dir.mkdirs();
+
+            String fileName = System.currentTimeMillis() + "_" + java.util.UUID.randomUUID().toString().substring(0, 8) + "." + ext;
+            java.io.File dest = new java.io.File(baseDir + fileName);
+            file.transferTo(dest);
+
+            String url = "/uploads/" + subDir + "/" + fileName;
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("url", url);
+            data.put("messageType", messageType);
+            data.put("fileName", originalName);
+            data.put("fileSize", file.getSize());
+            data.put("extension", ext);
+            return Result.ok(data);
+        } catch (Exception e) {
+            return Result.error("上传失败: " + e.getMessage());
+        }
     }
 }
