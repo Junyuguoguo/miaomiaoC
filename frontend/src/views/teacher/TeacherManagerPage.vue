@@ -1994,17 +1994,30 @@ const calculateActivityData = (students) => {
   const days = []
   const counts = []
 
+  const parsedDates = students.map(s => {
+    if (!s.lastActiveTime) return null
+    const d = new Date(s.lastActiveTime)
+    return { year: d.getFullYear(), month: d.getMonth(), date: d.getDate() }
+  })
+
   for (let i = 6; i >= 0; i--) {
     const date = new Date(today)
     date.setDate(date.getDate() - i)
-    const dateStr = date.toISOString().split('T')[0]
-    days.push(dateStr.slice(5))
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    days.push(`${month}-${day}`)
 
-    const count = students.filter(s => {
-      if (!s.lastActiveTime) return false
-      const activeDate = new Date(s.lastActiveTime).toISOString().split('T')[0]
-      return activeDate === dateStr
-    }).length
+    const targetYear = date.getFullYear()
+    const targetMonth = date.getMonth()
+    const targetDate = date.getDate()
+
+    let count = 0
+    for (let j = 0; j < parsedDates.length; j++) {
+      const pd = parsedDates[j]
+      if (pd && pd.year === targetYear && pd.month === targetMonth && pd.date === targetDate) {
+        count++
+      }
+    }
     counts.push(count)
   }
 
