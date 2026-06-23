@@ -956,7 +956,7 @@
 
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   User, Document, Edit, Folder, Warning, DataAnalysis,
@@ -1822,6 +1822,20 @@ onMounted(async () => {
   console.log('教师端页面加载，初始化数据...')
   // 根据默认菜单加载对应数据
   await handleMenuSelect(currentMenu.value)
+  window.addEventListener('resize', handleResize)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize)
+  if (gradeChartInstance && !gradeChartInstance.isDisposed()) {
+    gradeChartInstance.dispose()
+  }
+  if (questionChartInstance && !questionChartInstance.isDisposed()) {
+    questionChartInstance.dispose()
+  }
+  if (activityChartInstance && !activityChartInstance.isDisposed()) {
+    activityChartInstance.dispose()
+  }
 })
 
 const openBankAdd = () => {
@@ -1959,6 +1973,18 @@ const activityChartRef = ref(null)
 let gradeChartInstance = null
 let questionChartInstance = null
 let activityChartInstance = null
+
+const handleResize = () => {
+  if (gradeChartInstance && !gradeChartInstance.isDisposed()) {
+    gradeChartInstance.resize()
+  }
+  if (questionChartInstance && !questionChartInstance.isDisposed()) {
+    questionChartInstance.resize()
+  }
+  if (activityChartInstance && !activityChartInstance.isDisposed()) {
+    activityChartInstance.resize()
+  }
+}
 
 const calculateGradeDistribution = (students) => {
   let excellent = 0, good = 0, fail = 0, noData = 0
@@ -2121,6 +2147,8 @@ const loadTeacherStudents = async () => {
     if (res && res.code === 200) {
       studentList.value = res.data.students || []
       studentTotal.value = res.data.total || 0
+      
+      await nextTick()
       renderGradeChart()
       renderQuestionChart()
       renderActivityChart()
