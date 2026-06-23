@@ -310,14 +310,18 @@
 
         <!-- 4. 学院管理 -->
         <div v-if="currentMenu === '4'" class="page-content">
-          <div class="page-title">学院管理</div>
+          <el-card shadow="never">
+            <template #header>
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <span>学院管理</span>
+                <div style="display: flex; gap: 12px;">
+                  <el-button type="primary" @click="openCollegeAdd">新增学院</el-button>
+                  <el-button type="success" @click="handleInitColleges" :loading="collegeInitLoading">初始化学院数据</el-button>
+                </div>
+              </div>
+            </template>
 
-          <div style="margin-bottom: 15px; display: flex; gap: 12px;">
-            <el-button type="primary" @click="openCollegeAdd">新增学院</el-button>
-            <el-button type="success" @click="handleInitColleges" :loading="collegeInitLoading">初始化学院数据</el-button>
-          </div>
-
-          <el-table :data="collegeList" v-loading="collegeLoading" border class="data-table">
+            <el-table :data="collegeList" v-loading="collegeLoading" border class="data-table">
             <el-table-column label="ID" prop="id" width="80" align="center" />
             <el-table-column label="学院名称" prop="name" min-width="200" />
             <el-table-column label="排序" prop="sortOrder" width="100" align="center" />
@@ -338,6 +342,7 @@
               </template>
             </el-table-column>
           </el-table>
+          </el-card>
         </div>
 
       </div>
@@ -802,7 +807,7 @@ const handleInitColleges = async () => {
       loadColleges()
     }
   } catch (e) {
-    ElMessage.error('初始化失败')
+    ElMessage.error(e.response?.data?.message || '初始化失败')
   } finally {
     collegeInitLoading.value = false
   }
