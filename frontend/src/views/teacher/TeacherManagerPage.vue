@@ -81,6 +81,15 @@
         <div class="header-title">{{ currentTitle }}</div>
         <div class="header-actions">
           <el-button
+              v-if="userStore.getUserRoleId === 4"
+              type="primary"
+              plain
+              @click="$router.push('/admin')"
+          >
+            <el-icon><Setting /></el-icon>
+            返回管理员
+          </el-button>
+          <el-button
               type="text"
               @click="handleRefresh"
           >
@@ -497,148 +506,90 @@
 
         <!-- 5. 数据统计 -->
         <div v-if="currentMenu === '5'" class="page-content">
-          <div class="page-title">数据统计</div>
+          <div class="page-title">{{ userStore.getUserRoleId === 4 ? '全校数据统计' : '本学院数据统计' }}</div>
+
+          <!-- 概览卡片 -->
           <el-row :gutter="20" class="stats-overview-grid">
             <el-col :span="6">
-              <el-card class="stat-card">总考试数<br/>{{ stats.totalExam }}</el-card>
+              <el-card class="stat-card">{{ userStore.getUserRoleId === 4 ? '全校' : '本学院' }}学生数<br/>{{ teacherStats.studentCount ?? '-' }}</el-card>
             </el-col>
             <el-col :span="6">
-              <el-card class="stat-card">总题目数<br/>{{ stats.totalQuestion }}</el-card>
+              <el-card class="stat-card">平均做题数<br/>{{ teacherStats.avgQuestionCount ?? '-' }}</el-card>
             </el-col>
             <el-col :span="6">
-              <el-card class="stat-card">总题库数<br/>{{ stats.totalBank }}</el-card>
+              <el-card class="stat-card">平均正确率<br/>{{ teacherStats.avgPassRate != null ? teacherStats.avgPassRate + '%' : '-' }}</el-card>
             </el-col>
             <el-col :span="6">
-              <el-card class="stat-card">违规记录<br/>{{ stats.totalViolation }}</el-card>
-            </el-col>
-          </el-row>
-          <el-row :gutter="20" style="margin-top:20px;">
-            <el-col :span="6">
-              <el-card class="stat-card">VIP考试数<br/>{{ stats.examVip }}</el-card>
-            </el-col>
-            <el-col :span="6">
-              <el-card class="stat-card">免费考试数<br/>{{ stats.examFree }}</el-card>
+              <el-card class="stat-card">考试及格率<br/>{{ teacherStats.examPassRate != null ? teacherStats.examPassRate + '%' : '-' }}</el-card>
             </el-col>
           </el-row>
 
-          <div class="stats-chart-grid">
-            <el-card class="chart-card" shadow="never">
-              <template #header>
-                <div class="chart-card-header">
-                  <span>考试状态分布</span>
-                  <span class="chart-card-meta">共 {{ stats.totalExam }} 场</span>
-                </div>
-              </template>
-              <div class="chart-card-body">
-                <div class="donut-chart-shell">
-                  <div class="donut-chart" :style="buildDonutStyle(examStatusChartData)">
-                    <div class="donut-chart-center">
-                      <strong>{{ stats.totalExam }}</strong>
-                      <span>考试总数</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="chart-legend">
-                  <div
-                      v-for="item in examStatusChartData"
-                      :key="item.label"
-                      class="legend-row"
-                  >
-                    <div class="legend-row-top">
-                      <div class="legend-label">
-                        <span class="legend-dot" :style="{ backgroundColor: item.color }"></span>
-                        <span>{{ item.label }}</span>
-                      </div>
-                      <div class="legend-value">{{ item.value }} / {{ item.percent }}%</div>
-                    </div>
-                    <div class="legend-track">
-                      <div class="legend-fill" :style="{ width: item.percent + '%', backgroundColor: item.color }"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </el-card>
+          <!-- 图表区域 -->
+          <el-row :gutter="20" style="margin-top:20px">
+            <el-col :span="12">
+              <el-card shadow="never" class="chart-card">
+                <template #header>
+                  <span>学生成绩分布</span>
+                </template>
+                <div ref="gradeChartRef" class="chart-container"></div>
+              </el-card>
+            </el-col>
+            <el-col :span="12">
+              <el-card shadow="never" class="chart-card">
+                <template #header>
+                  <span>做题数分布</span>
+                </template>
+                <div ref="questionChartRef" class="chart-container"></div>
+              </el-card>
+            </el-col>
+          </el-row>
 
-            <el-card class="chart-card" shadow="never">
-              <template #header>
-                <div class="chart-card-header">
-                  <span>题目难度分布</span>
-                  <span class="chart-card-meta">共 {{ stats.totalQuestion }} 题</span>
-                </div>
-              </template>
-              <div class="difficulty-bars">
-                <div
-                    v-for="item in difficultyChartData"
-                    :key="item.label"
-                    class="difficulty-row"
-                >
-                  <div class="difficulty-header">
-                    <div class="difficulty-title">
-                      <span class="difficulty-chip" :style="{ backgroundColor: item.softColor, color: item.color }">{{ item.label }}</span>
-                    </div>
-                    <div class="difficulty-value">{{ item.value }} 题</div>
-                  </div>
-                  <div class="difficulty-track">
-                    <div class="difficulty-fill" :style="{ width: item.percent + '%', background: item.gradient }"></div>
-                  </div>
-                  <div class="difficulty-footer">{{ item.percent }}% 的题目位于这个难度档</div>
-                </div>
-              </div>
-            </el-card>
-          </div>
+          <el-row :gutter="20" style="margin-top:20px">
+            <el-col :span="24">
+              <el-card shadow="never" class="chart-card">
+                <template #header>
+                  <span>学习活跃度趋势（近7天）</span>
+                </template>
+                <div ref="activityChartRef" class="chart-container"></div>
+              </el-card>
+            </el-col>
+          </el-row>
 
-          <div class="stats-chart-grid secondary">
-            <el-card class="chart-card compact" shadow="never">
-              <template #header>
-                <div class="chart-card-header">
-                  <span>考试权限结构</span>
-                  <span class="chart-card-meta">VIP / 免费</span>
-                </div>
-              </template>
-              <div class="segment-card">
-                <div class="segment-track">
-                  <div
-                      v-for="item in accessChartData"
-                      :key="item.label"
-                      class="segment-block"
-                      :style="{ width: item.percent + '%', background: item.gradient }"
-                  ></div>
-                </div>
-                <div class="segment-legend">
-                  <div v-for="item in accessChartData" :key="item.label" class="segment-row">
-                    <div class="legend-label">
-                      <span class="legend-dot" :style="{ backgroundColor: item.color }"></span>
-                      <span>{{ item.label }}</span>
-                    </div>
-                    <strong>{{ item.value }}</strong>
-                  </div>
-                </div>
+          <!-- 学生明细表格 -->
+          <el-card style="margin-top:20px;" shadow="never">
+            <template #header>
+              <div style="display:flex;align-items:center;justify-content:space-between;">
+                <span>学生明细</span>
+                <el-input v-model="studentKeyword" placeholder="搜索姓名/用户名" clearable style="width:220px;" @clear="loadTeacherStudents" @keyup.enter="loadTeacherStudents">
+                  <template #append><el-button @click="loadTeacherStudents">搜索</el-button></template>
+                </el-input>
               </div>
-            </el-card>
-
-            <el-card class="chart-card compact" shadow="never">
-              <template #header>
-                <div class="chart-card-header">
-                  <span>运行概览</span>
-                  <span class="chart-card-meta">关键比例</span>
-                </div>
-              </template>
-              <div class="summary-metrics">
-                <div class="summary-metric">
-                  <span>每场考试平均题量</span>
-                  <strong>{{ averageQuestionsPerExam }}</strong>
-                </div>
-                <div class="summary-metric">
-                  <span>每题库平均题量</span>
-                  <strong>{{ averageQuestionsPerBank }}</strong>
-                </div>
-                <div class="summary-metric">
-                  <span>违规记录密度</span>
-                  <strong>{{ violationDensity }}</strong>
-                </div>
-              </div>
-            </el-card>
-          </div>
+            </template>
+            <el-table :data="studentList" stripe style="width:100%;" v-loading="studentLoading">
+              <el-table-column prop="realName" label="姓名" width="120" />
+              <el-table-column prop="username" label="用户名" width="120" />
+              <el-table-column prop="questionCount" label="做题数" width="90" sortable />
+              <el-table-column label="正确率" width="100" sortable sort-by="questionPassRate">
+                <template #default="{ row }">{{ row.questionPassRate != null ? row.questionPassRate + '%' : '-' }}</template>
+              </el-table-column>
+              <el-table-column prop="examCount" label="考试次数" width="100" sortable />
+              <el-table-column label="平均分" width="90" sortable sort-by="avgScore">
+                <template #default="{ row }">{{ row.avgScore != null ? Number(row.avgScore).toFixed(1) : '-' }}</template>
+              </el-table-column>
+              <el-table-column label="最近活跃" min-width="140">
+                <template #default="{ row }">{{ row.lastActiveTime || '-' }}</template>
+              </el-table-column>
+            </el-table>
+            <div style="margin-top:16px;display:flex;justify-content:flex-end;">
+              <el-pagination
+                v-model:current-page="studentPage"
+                :page-size="studentPageSize"
+                :total="studentTotal"
+                layout="total, prev, pager, next"
+                @current-change="loadTeacherStudents"
+              />
+            </div>
+          </el-card>
         </div>
 
         <!-- 6. VIP设置 -->
@@ -763,7 +714,8 @@
                 <el-input v-model="profileForm.email" placeholder="请输入邮箱" />
               </el-form-item>
               <el-form-item label="所属学院">
-                <el-input v-model="profileForm.college" placeholder="请输入所属学院" />
+                <el-input :model-value="profileForm.college" disabled />
+                <div class="form-hint">学院由管理员通过邀请码设定，不可修改</div>
               </el-form-item>
               <el-form-item>
                 <el-button type="primary" :loading="profileSaving" @click="saveTeacherProfile">保存</el-button>
@@ -1008,7 +960,7 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   User, Document, Edit, Folder, Warning, DataAnalysis,
-  SwitchButton, Refresh, Medal, Plus, Key, CopyDocument, ChatLineSquare
+  SwitchButton, Refresh, Medal, Plus, Key, CopyDocument, ChatLineSquare, Setting
 } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from "@/stores/user"
@@ -1039,7 +991,14 @@ import {
   deleteVipKey
 } from "@/api/vip-key.js"
 import { getViolationRecords } from "@/api/exam.js"
+import { getTeacherStatsOverview, getTeacherStatsStudents } from '@/api/teacher-stats'
 import { getRooms as getRoomsApi, createRoom as createRoomApi, deleteRoom as deleteRoomApi, updateRoom as updateRoomApi } from '@/api/chat'
+import * as echarts from 'echarts/core'
+import { BarChart, PieChart, LineChart } from 'echarts/charts'
+import { GridComponent, TooltipComponent, LegendComponent, TitleComponent } from 'echarts/components'
+import { CanvasRenderer } from 'echarts/renderers'
+
+echarts.use([BarChart, PieChart, LineChart, GridComponent, TooltipComponent, LegendComponent, TitleComponent, CanvasRenderer])
 
 // 初始化路由和用户状态管理
 const router = useRouter()
@@ -1535,7 +1494,8 @@ const handleMenuSelect = async (index) => {
     await loadViolationRecords(true)
   } else if (index === '5') {
     console.log('加载统计数据')
-    // 统计数据不需要额外加载，直接从已有数据计算
+    loadTeacherStats()
+    loadTeacherStudents()
   } else if (index === '6') {
     console.log('加载VIP套餐')
     await loadVipPlanList()
@@ -1947,6 +1907,15 @@ const examList = ref([])
 const violationLoading = ref(false)
 const violationList = ref([])
 
+// 本学院数据统计
+const teacherStats = ref({})
+const studentList = ref([])
+const studentKeyword = ref('')
+const studentPage = ref(1)
+const studentPageSize = ref(20)
+const studentTotal = ref(0)
+const studentLoading = ref(false)
+
 // 聊天室管理
 const chatRoomList = ref([])
 const showCreateRoomDialog = ref(false)
@@ -1983,6 +1952,33 @@ const violationStats = computed(() => {
     forceSubmitCount: violationList.value.filter(item => Number(item.count) > 3).length
   }
 })
+
+const gradeChartRef = ref(null)
+const questionChartRef = ref(null)
+const activityChartRef = ref(null)
+let gradeChartInstance = null
+let questionChartInstance = null
+let activityChartInstance = null
+
+// 本学院统计方法
+const loadTeacherStats = async () => {
+  try {
+    const res = await getTeacherStatsOverview()
+    if (res && res.code === 200) teacherStats.value = res.data || {}
+  } catch (e) { console.error('加载统计概览失败:', e) }
+}
+
+const loadTeacherStudents = async () => {
+  studentLoading.value = true
+  try {
+    const res = await getTeacherStatsStudents({ keyword: studentKeyword.value || undefined, page: studentPage.value - 1, size: studentPageSize.value })
+    if (res && res.code === 200) {
+      studentList.value = res.data.students || []
+      studentTotal.value = res.data.total || 0
+    }
+  } catch (e) { console.error('加载学生列表失败:', e) }
+  finally { studentLoading.value = false }
+}
 
 // 聊天室管理方法
 const loadChatRooms = async () => {
@@ -2985,5 +2981,20 @@ const handleRefresh = () => {
 
 .profile-form {
   max-width: 400px;
+}
+
+.form-hint {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 4px;
+}
+
+.chart-card {
+  margin-bottom: 0;
+}
+
+.chart-container {
+  height: 300px;
+  width: 100%;
 }
 </style>
