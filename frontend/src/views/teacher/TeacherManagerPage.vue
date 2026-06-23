@@ -1960,6 +1960,57 @@ let gradeChartInstance = null
 let questionChartInstance = null
 let activityChartInstance = null
 
+const calculateGradeDistribution = (students) => {
+  let excellent = 0, good = 0, fail = 0, noData = 0
+  students.forEach(s => {
+    if (s.questionCount === 0) {
+      noData++
+    } else if (s.questionPassRate >= 80) {
+      excellent++
+    } else if (s.questionPassRate >= 60) {
+      good++
+    } else {
+      fail++
+    }
+  })
+  return { excellent, good, fail, noData }
+}
+
+const calculateQuestionDistribution = (students) => {
+  let count0 = 0, count10 = 0, count20 = 0, count50 = 0, count50plus = 0
+  students.forEach(s => {
+    const q = s.questionCount
+    if (q === 0) count0++
+    else if (q <= 10) count10++
+    else if (q <= 20) count20++
+    else if (q <= 50) count50++
+    else count50plus++
+  })
+  return { count0, count10, count20, count50, count50plus }
+}
+
+const calculateActivityData = (students) => {
+  const today = new Date()
+  const days = []
+  const counts = []
+
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date(today)
+    date.setDate(date.getDate() - i)
+    const dateStr = date.toISOString().split('T')[0]
+    days.push(dateStr.slice(5))
+
+    const count = students.filter(s => {
+      if (!s.lastActiveTime) return false
+      const activeDate = new Date(s.lastActiveTime).toISOString().split('T')[0]
+      return activeDate === dateStr
+    }).length
+    counts.push(count)
+  }
+
+  return { days, counts }
+}
+
 // 本学院统计方法
 const loadTeacherStats = async () => {
   try {
