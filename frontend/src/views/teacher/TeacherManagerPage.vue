@@ -2024,6 +2024,88 @@ const calculateActivityData = (students) => {
   return { days, counts }
 }
 
+const renderGradeChart = () => {
+  if (!gradeChartRef.value || studentList.value.length === 0) return
+  if (gradeChartInstance && !gradeChartInstance.isDisposed()) {
+    gradeChartInstance.dispose()
+  }
+  gradeChartInstance = echarts.init(gradeChartRef.value)
+  const { excellent, good, fail, noData } = calculateGradeDistribution(studentList.value)
+
+  gradeChartInstance.setOption({
+    tooltip: { trigger: 'item', formatter: '{b}: {c}人 ({d}%)' },
+    legend: { bottom: '0', left: 'center' },
+    series: [{
+      name: '成绩分布',
+      type: 'pie',
+      radius: ['40%', '65%'],
+      center: ['50%', '45%'],
+      itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
+      label: { show: true, formatter: '{b}\n{d}%' },
+      data: [
+        { value: excellent, name: '优秀' },
+        { value: good, name: '良好' },
+        { value: fail, name: '不及格' },
+        { value: noData, name: '未做题' }
+      ],
+      color: ['#67c23a', '#409eff', '#e6a23c', '#dcdfe6']
+    }]
+  })
+}
+
+const renderQuestionChart = () => {
+  if (!questionChartRef.value || studentList.value.length === 0) return
+  if (questionChartInstance && !questionChartInstance.isDisposed()) {
+    questionChartInstance.dispose()
+  }
+  questionChartInstance = echarts.init(questionChartRef.value)
+  const { count0, count10, count20, count50, count50plus } = calculateQuestionDistribution(studentList.value)
+
+  questionChartInstance.setOption({
+    tooltip: { trigger: 'axis' },
+    grid: { left: '3%', right: '4%', bottom: '12%', containLabel: true },
+    xAxis: { type: 'category', data: ['0题', '1-10题', '11-20题', '21-50题', '50+题'] },
+    yAxis: { type: 'value', name: '学生数' },
+    series: [{
+      name: '学生数',
+      type: 'bar',
+      data: [count0, count10, count20, count50, count50plus],
+      itemStyle: {
+        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          { offset: 0, color: '#409eff' },
+          { offset: 1, color: '#79bbff' }
+        ]),
+        borderRadius: [4, 4, 0, 0]
+      },
+      barMaxWidth: 40
+    }]
+  })
+}
+
+const renderActivityChart = () => {
+  if (!activityChartRef.value || studentList.value.length === 0) return
+  if (activityChartInstance && !activityChartInstance.isDisposed()) {
+    activityChartInstance.dispose()
+  }
+  activityChartInstance = echarts.init(activityChartRef.value)
+  const { days, counts } = calculateActivityData(studentList.value)
+
+  activityChartInstance.setOption({
+    tooltip: { trigger: 'axis' },
+    grid: { left: '3%', right: '4%', bottom: '12%', containLabel: true },
+    xAxis: { type: 'category', data: days },
+    yAxis: { type: 'value', name: '活跃学生数' },
+    series: [{
+      name: '活跃学生数',
+      type: 'line',
+      data: counts,
+      smooth: true,
+      itemStyle: { color: '#409eff' },
+      areaStyle: { color: 'rgba(64, 158, 255, 0.1)' }
+    }]
+  })
+}
+
 // 本学院统计方法
 const loadTeacherStats = async () => {
   try {
@@ -2039,6 +2121,9 @@ const loadTeacherStudents = async () => {
     if (res && res.code === 200) {
       studentList.value = res.data.students || []
       studentTotal.value = res.data.total || 0
+      renderGradeChart()
+      renderQuestionChart()
+      renderActivityChart()
     }
   } catch (e) { console.error('加载学生列表失败:', e) }
   finally { studentLoading.value = false }
