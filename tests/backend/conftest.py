@@ -23,8 +23,8 @@ TEST_USERS = {
         "college": "计算机学院"
     },
     "admin": {
-        "username": "bistu",
-        "password": "root@bistu",
+        "username": "admin",
+        "password": "admin123",
         "role": "ADMIN",
         "college": "计算机学院"
     }
