@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="MiaomiaoC">
+  <defs>
+    <linearGradient id="brand" x1="9" y1="8" x2="56" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1f7bff"/>
+      <stop offset="0.48" stop-color="#24c6dc"/>
+      <stop offset="1" stop-color="#7c5cff"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="16" y1="6" x2="34" y2="32" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.78"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="shadow" x="-18%" y="-16%" width="136%" height="138%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="5" stdDeviation="4" flood-color="#2563eb" flood-opacity="0.26"/>
+    </filter>
+  </defs>
+  <rect x="7" y="7" width="50" height="50" rx="16" fill="url(#brand)" filter="url(#shadow)"/>
+  <path d="M13 16C16 10.8 23.2 9.2 31.4 9.2H40C29.4 13.1 21.8 20.4 18.2 31.2C17.2 27.1 14.6 21.2 13 16Z" fill="url(#shine)"/>
+  <path d="M43.2 39.5C40.6 44 36.4 46.5 31.4 46.5C23.2 46.5 17.5 40.4 17.5 32C17.5 23.6 23.3 17.5 31.5 17.5C36.6 17.5 40.7 20 43.1 24.2L37.7 27.2C36.4 24.9 34.4 23.8 31.6 23.8C27.1 23.8 24.1 27.1 24.1 32C24.1 36.9 27.2 40.2 31.6 40.2C34.5 40.2 36.6 38.9 38 36.4L43.2 39.5Z" fill="#ffffff"/>
+</svg>

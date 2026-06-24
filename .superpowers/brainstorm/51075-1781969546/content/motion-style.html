@@ -1,0 +1,95 @@
+<h2>动态效果更偏哪一种？</h2>
+<p class="subtitle">整套学生端统一后，动效会贯穿登录、首页、练题、聊天、考试记录和 VIP 页面。选一个基调，我会按这个方向设计页面节奏。</p>
+
+<div class="cards">
+  <div class="card" data-choice="a-light-dashboard" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="height:190px;border-radius:14px;background:linear-gradient(135deg,#f4f8ff,#fbf8ff);padding:14px;overflow:hidden">
+        <div style="height:100%;display:grid;grid-template-columns:62px 1fr;gap:12px">
+          <div style="background:rgba(255,255,255,.9);border-radius:14px;padding:10px;box-shadow:0 12px 28px rgba(34,88,190,.08)">
+            <div style="width:30px;height:30px;border-radius:10px;background:linear-gradient(135deg,#2587ff,#7d5cff);margin-bottom:20px"></div>
+            <div style="height:8px;border-radius:99px;background:#dbe7ff;margin-bottom:10px"></div>
+            <div style="height:8px;border-radius:99px;background:#edf2ff;margin-bottom:10px"></div>
+            <div style="height:8px;border-radius:99px;background:#edf2ff"></div>
+          </div>
+          <div style="display:grid;grid-template-rows:70px 1fr;gap:12px">
+            <div style="background:rgba(255,255,255,.9);border-radius:18px;position:relative;box-shadow:0 16px 36px rgba(34,88,190,.1)">
+              <div style="position:absolute;left:20px;top:18px;width:36%;height:13px;border-radius:99px;background:#102033"></div>
+              <div style="position:absolute;left:20px;top:42px;width:27%;height:8px;border-radius:99px;background:#8ba0bd"></div>
+              <div style="position:absolute;right:22px;top:18px;width:34px;height:34px;border-radius:12px;background:#e9f1ff;box-shadow:0 0 0 8px rgba(37,99,235,.06)"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+              <div style="background:#fff;border-radius:14px;box-shadow:0 12px 28px rgba(34,88,190,.08)"></div>
+              <div style="background:#fff;border-radius:14px;box-shadow:0 12px 28px rgba(34,88,190,.08);transform:translateY(-6px)"></div>
+              <div style="background:#fff;border-radius:14px;box-shadow:0 12px 28px rgba(34,88,190,.08)"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. 轻盈学习仪表盘</h3>
+      <p>卡片柔和浮起、进度数字递增、任务环轻缓描边、页面淡入。适合学校平台，稳定、亲和、耐看。</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b-exam-tech" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="height:190px;border-radius:14px;background:linear-gradient(135deg,#edf5ff,#f6f1ff);padding:14px;position:relative;overflow:hidden">
+        <div style="position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(37,99,235,.08) 0 1px,transparent 1px 28px),repeating-linear-gradient(0deg,rgba(124,92,255,.06) 0 1px,transparent 1px 28px);opacity:.45"></div>
+        <div style="position:relative;height:100%;display:grid;grid-template-columns:1fr 1.1fr;gap:12px">
+          <div style="background:rgba(255,255,255,.86);border-radius:16px;padding:14px;box-shadow:0 16px 36px rgba(30,70,170,.12)">
+            <div style="height:12px;width:45%;border-radius:99px;background:#102033;margin-bottom:14px"></div>
+            <div style="height:9px;width:72%;border-radius:99px;background:#dae7ff;margin-bottom:10px"></div>
+            <div style="height:9px;width:60%;border-radius:99px;background:#dae7ff;margin-bottom:22px"></div>
+            <div style="height:62px;border-radius:12px;background:#07182e;box-shadow:inset 0 0 0 1px rgba(91,142,255,.35);position:relative">
+              <div style="position:absolute;left:12px;top:12px;width:56%;height:7px;border-radius:99px;background:#59d9ff"></div>
+              <div style="position:absolute;left:12px;top:29px;width:42%;height:7px;border-radius:99px;background:#a78bfa"></div>
+              <div style="position:absolute;left:12px;top:46px;width:62%;height:7px;border-radius:99px;background:#34d399"></div>
+            </div>
+          </div>
+          <div style="background:rgba(255,255,255,.9);border-radius:16px;box-shadow:0 16px 36px rgba(30,70,170,.12);position:relative;overflow:hidden">
+            <div style="position:absolute;left:24px;top:24px;width:58px;height:58px;border-radius:18px;background:linear-gradient(135deg,#1e7bff,#8b5cf6);box-shadow:0 20px 40px rgba(42,91,216,.28)"></div>
+            <div style="position:absolute;right:22px;top:28px;width:48px;height:48px;border-radius:50%;border:8px solid #dbe6ff;border-top-color:#2d7cff"></div>
+            <div style="position:absolute;left:24px;bottom:24px;right:24px;height:34px;border-radius:12px;background:linear-gradient(90deg,#1f7bff,#8b5cf6)"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. 机试科技感更强</h3>
+      <p>代码光标、扫描线、运行状态脉冲、提交反馈更明确。更有“在线机试平台”的专业感，但要控制强度避免花。</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c-balanced" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="height:190px;border-radius:14px;background:linear-gradient(135deg,#f3f8ff,#f8f4ff);padding:14px;overflow:hidden">
+        <div style="height:100%;display:grid;grid-template-columns:58px 1fr 82px;gap:10px">
+          <div style="background:#fff;border-radius:14px;box-shadow:0 12px 28px rgba(34,88,190,.08)"></div>
+          <div style="display:grid;grid-template-rows:64px 1fr;gap:10px">
+            <div style="background:#fff;border-radius:16px;position:relative;box-shadow:0 14px 30px rgba(34,88,190,.09)">
+              <div style="position:absolute;left:18px;top:17px;width:42%;height:12px;border-radius:99px;background:#102033"></div>
+              <div style="position:absolute;left:18px;top:40px;width:30%;height:8px;border-radius:99px;background:#8fa1bd"></div>
+              <div style="position:absolute;right:18px;top:15px;width:38px;height:38px;border-radius:13px;background:linear-gradient(135deg,#24c6dc,#514aef)"></div>
+            </div>
+            <div style="background:#07182e;border-radius:16px;position:relative;box-shadow:0 18px 38px rgba(7,24,46,.18)">
+              <div style="position:absolute;left:16px;top:16px;width:54%;height:7px;border-radius:99px;background:#59d9ff"></div>
+              <div style="position:absolute;left:16px;top:36px;width:38%;height:7px;border-radius:99px;background:#a78bfa"></div>
+              <div style="position:absolute;left:16px;top:56px;width:62%;height:7px;border-radius:99px;background:#34d399"></div>
+              <div style="position:absolute;left:16px;bottom:16px;width:76px;height:24px;border-radius:10px;background:#1f7bff"></div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-rows:1fr 1fr;gap:10px">
+            <div style="background:#fff;border-radius:14px;box-shadow:0 12px 28px rgba(34,88,190,.08)"></div>
+            <div style="background:linear-gradient(135deg,#eef4ff,#f5efff);border-radius:14px;box-shadow:0 12px 28px rgba(34,88,190,.08)"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. 平衡版</h3>
+      <p>首页和 VIP 页轻盈，练题/考试页增强代码与运行反馈。整体统一，又能突出机试场景。我会优先推荐这个。</p>
+    </div>
+  </div>
+</div>

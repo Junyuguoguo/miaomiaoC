@@ -1,0 +1,93 @@
+<h2>这次前端改造先覆盖到哪里？</h2>
+<p class="subtitle">参考图包含登录、学生中心、聊天、题库练习、考试记录和 VIP 页。先选一个范围，我会据此继续细化视觉方案。</p>
+
+<div class="cards">
+  <div class="card" data-choice="a-core" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="height:180px;border-radius:14px;background:linear-gradient(135deg,#eef6ff,#f5f0ff);padding:14px;display:grid;grid-template-columns:48px 1fr;gap:12px;overflow:hidden">
+        <div style="background:#fff;border-radius:12px;box-shadow:0 10px 24px rgba(42,91,216,.12);display:flex;flex-direction:column;gap:10px;padding:10px">
+          <div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#1f7bff,#7c5cff)"></div>
+          <div style="height:7px;border-radius:99px;background:#c9d9ff"></div>
+          <div style="height:7px;border-radius:99px;background:#e4ebff"></div>
+          <div style="height:7px;border-radius:99px;background:#e4ebff"></div>
+        </div>
+        <div style="display:grid;grid-template-rows:42px 1fr 46px;gap:12px">
+          <div style="background:rgba(255,255,255,.82);border-radius:14px"></div>
+          <div style="background:rgba(255,255,255,.86);border-radius:16px;box-shadow:0 14px 32px rgba(42,91,216,.12);position:relative;overflow:hidden">
+            <div style="position:absolute;left:18px;top:24px;width:42%;height:12px;border-radius:99px;background:#102033"></div>
+            <div style="position:absolute;left:18px;top:52px;width:34%;height:8px;border-radius:99px;background:#8fa1bd"></div>
+            <div style="position:absolute;right:28px;top:26px;width:72px;height:72px;border-radius:24px;background:linear-gradient(135deg,#2b7cff,#8b5cf6);transform:rotate(-12deg)"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+            <div style="background:#fff;border-radius:12px"></div>
+            <div style="background:#fff;border-radius:12px"></div>
+            <div style="background:#fff;border-radius:12px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. 核心学生体验</h3>
+      <p>登录页 + 学生首页/个人中心 + 题库练习/代码编辑页。最快把“机试刷题与模拟考试平台”的主路径做出质感。</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b-full-student" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="height:180px;border-radius:14px;background:linear-gradient(135deg,#eef6ff,#f7f1ff);padding:12px;display:grid;grid-template-columns:54px 1fr 78px;gap:10px;overflow:hidden">
+        <div style="background:#fff;border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px">
+          <div style="width:28px;height:28px;border-radius:9px;background:linear-gradient(135deg,#1f7bff,#7c5cff)"></div>
+          <div style="height:7px;border-radius:99px;background:#c9d9ff"></div>
+          <div style="height:7px;border-radius:99px;background:#e4ebff"></div>
+          <div style="height:7px;border-radius:99px;background:#e4ebff"></div>
+          <div style="height:7px;border-radius:99px;background:#e4ebff"></div>
+        </div>
+        <div style="display:grid;grid-template-rows:38px 72px 1fr;gap:10px">
+          <div style="background:#fff;border-radius:14px"></div>
+          <div style="background:rgba(255,255,255,.88);border-radius:16px;position:relative">
+            <div style="position:absolute;left:14px;top:18px;width:45%;height:10px;border-radius:99px;background:#102033"></div>
+            <div style="position:absolute;left:14px;top:42px;width:32%;height:7px;border-radius:99px;background:#8fa1bd"></div>
+            <div style="position:absolute;right:18px;top:14px;width:52px;height:52px;border-radius:18px;background:linear-gradient(135deg,#24c6dc,#514aef)"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div style="background:#fff;border-radius:14px"></div>
+            <div style="background:#fff;border-radius:14px"></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-rows:1fr 1fr 1fr;gap:10px">
+          <div style="background:#fff;border-radius:14px"></div>
+          <div style="background:linear-gradient(135deg,#6ea8ff,#8b5cf6);border-radius:14px"></div>
+          <div style="background:#fff;border-radius:14px"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. 整套学生端统一</h3>
+      <p>覆盖参考图里的主要页面：登录、首页、聊天、题库、考试记录、VIP。视觉一致性最好，范围也最大。</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c-dashboard-first" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="height:180px;border-radius:14px;background:linear-gradient(135deg,#edf5ff,#f9f5ff);padding:14px;display:grid;grid-template-columns:58px 1fr;gap:12px;overflow:hidden">
+        <div style="background:#fff;border-radius:12px"></div>
+        <div style="display:grid;grid-template-rows:68px 1fr;gap:12px">
+          <div style="background:rgba(255,255,255,.9);border-radius:18px;box-shadow:0 14px 32px rgba(42,91,216,.1);position:relative">
+            <div style="position:absolute;left:18px;top:18px;width:36%;height:13px;border-radius:99px;background:#102033"></div>
+            <div style="position:absolute;left:18px;top:42px;width:28%;height:8px;border-radius:99px;background:#8fa1bd"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+            <div style="background:#fff;border-radius:14px"></div>
+            <div style="background:#fff;border-radius:14px"></div>
+            <div style="background:#fff;border-radius:14px"></div>
+            <div style="background:#fff;border-radius:14px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. 只先做首页样板</h3>
+      <p>先把学生首页做成可复用设计样板，后续再逐页扩展。风险最低，但参考图中的登录/练题页暂不落地。</p>
+    </div>
+  </div>
+</div>

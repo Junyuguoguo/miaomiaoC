@@ -1,0 +1,190 @@
+MiaomiaoC 在线考试系统 - 宝塔部署说明
+
+一、打包内容
+
+dabao/
+  frontend/                         前端静态文件，宝塔网站根目录指向这里
+  backend/backend-0.0.1-SNAPSHOT.jar 后端 Spring Boot jar
+  backend/config/application.yml     后端生产配置，部署前需要改数据库密码
+  database/miaomiaoc.sql             你的线上数据库备份，来自 /Users/a0000/Downloads/localhost.sql
+  uploads/                           已有上传头像文件，后端运行目录需要能访问它
+  nginx/miaomiaoc-baota.conf         宝塔 Nginx 反向代理配置片段
+  scripts/                           后端启动、停止、重启脚本
+
+二、服务器环境要求
+
+1. 宝塔软件商店安装：
+   - Nginx
+   - MySQL 8.0
+   - Redis
+   - Java 项目管理器，或服务器已安装 JDK 21
+
+2. 不需要在服务器安装 Node.js 或 Maven，因为前端 dist 和后端 jar 已经打好。
+
+三、上传和解压
+
+建议上传到：
+
+  /www/wwwroot/miaomiaoc
+
+如果你上传的是 miaomiaoc-baota-deploy.zip：
+
+  cd /www/wwwroot
+  mkdir -p miaomiaoc
+  cd miaomiaoc
+  unzip miaomiaoc-baota-deploy.zip
+
+解压后确认有：
+
+  /www/wwwroot/miaomiaoc/frontend/index.html
+  /www/wwwroot/miaomiaoc/backend/backend-0.0.1-SNAPSHOT.jar
+  /www/wwwroot/miaomiaoc/backend/config/application.yml
+  /www/wwwroot/miaomiaoc/database/miaomiaoc.sql
+  /www/wwwroot/miaomiaoc/uploads/
+
+四、导入数据库
+
+方式 A：宝塔面板导入
+
+1. 宝塔 -> 数据库 -> 添加数据库
+   - 数据库名：miaomiaoc
+   - 用户名和密码按你的服务器设置
+2. 进入该数据库的“导入”，选择：
+   /www/wwwroot/miaomiaoc/database/miaomiaoc.sql
+
+方式 B：SSH 命令导入
+
+  mysql -uroot -p < /www/wwwroot/miaomiaoc/database/miaomiaoc.sql
+
+说明：SQL 文件里已经包含 CREATE DATABASE IF NOT EXISTS `miaomiaoc` 和 USE `miaomiaoc`。
+
+五、修改后端配置
+
+编辑：
+
+  /www/wwwroot/miaomiaoc/backend/config/application.yml
+
+必须修改：
+
+  spring.datasource.username
+  spring.datasource.password
+
+如果数据库不是本机，还要改：
+
+  spring.datasource.url
+
+如果 Redis 设置了密码，修改：
+
+  spring.data.redis.password
+
+如果要使用找回密码邮件，修改：
+
+  spring.mail.username
+  spring.mail.password
+
+六、启动后端
+
+SSH 执行：
+
+  cd /www/wwwroot/miaomiaoc
+  chmod +x scripts/*.sh
+  ./scripts/start-backend.sh
+
+查看日志：
+
+  tail -f logs/backend.log
+
+停止后端：
+
+  ./scripts/stop-backend.sh
+
+重启后端：
+
+  ./scripts/restart-backend.sh
+
+如果使用宝塔“Java 项目管理器”，建议这样填：
+
+  项目路径/工作目录：/www/wwwroot/miaomiaoc
+  Jar 文件：/www/wwwroot/miaomiaoc/backend/backend-0.0.1-SNAPSHOT.jar
+  项目端口：8080
+  启动参数：--spring.config.location=file:/www/wwwroot/miaomiaoc/backend/config/application.yml
+  JDK 版本：21
+
+注意：工作目录一定要是 /www/wwwroot/miaomiaoc，这样后端才能读取 uploads/avatars 里的头像文件。
+
+七、创建宝塔网站
+
+1. 宝塔 -> 网站 -> 添加站点
+2. 域名填写你的域名，例如：
+   exam.example.com
+3. 根目录选择：
+   /www/wwwroot/miaomiaoc/frontend
+4. PHP 版本选择：纯静态
+
+八、配置 Nginx
+
+宝塔 -> 网站 -> 你的站点 -> 配置文件
+
+在 server { ... } 内添加或替换相关 location：
+
+  复制 /www/wwwroot/miaomiaoc/nginx/miaomiaoc-baota.conf 的全部内容
+
+然后保存并重载 Nginx。
+
+这个配置做了三件事：
+
+1. Vue 路由刷新不 404：
+   try_files $uri $uri/ /index.html;
+
+2. 后端接口反向代理：
+   /api/ -> http://127.0.0.1:8080
+   /uploads/ -> http://127.0.0.1:8080
+
+3. 聊天 WebSocket 反向代理：
+   /ws-chat/ -> http://127.0.0.1:8080
+
+九、放行端口
+
+公网只需要开放：
+
+  80
+  443
+
+8080 建议不要公网开放，只让 Nginx 在本机反代访问。
+
+十、部署后检查
+
+1. 浏览器打开：
+   https://你的域名/login
+
+2. 刷新这些前端路由，不应该 404：
+   https://你的域名/exam
+   https://你的域名/chat
+
+3. 后端日志没有数据库或 Redis 连接错误：
+   tail -f /www/wwwroot/miaomiaoc/logs/backend.log
+
+十一、常见问题
+
+1. 页面能打开，但登录提示网络错误
+   - 检查后端 jar 是否启动
+   - 检查 Nginx 是否配置了 /api/ 反向代理
+   - 检查 backend/config/application.yml 的数据库密码
+
+2. 前端刷新 /exam 或 /chat 变 404
+   - Nginx 缺少 try_files $uri $uri/ /index.html;
+
+3. 聊天连接不上
+   - Nginx 缺少 /ws-chat/ WebSocket 代理
+   - 后端日志检查 WebSocket 相关错误
+
+4. 头像不显示
+   - 确认 /www/wwwroot/miaomiaoc/uploads/avatars 存在
+   - 确认 Java 项目的工作目录是 /www/wwwroot/miaomiaoc
+
+5. 后端启动失败，提示 Java 版本
+   - 需要 JDK 21
+
+6. 数据库表不对或数据为空
+   - 重新导入 database/miaomiaoc.sql
+   - 确认导入的是 miaomiaoc 数据库
