@@ -200,7 +200,7 @@ const loginForm = reactive({
 const loginRules = {
   username: [
     { required: true, message: '请输入账号', trigger: 'blur' },
-    { min: 3, max: 10, message: '长度在 3 到 10 个字符', trigger: 'blur' }
+    { min: 3, max: 20, message: '长度在 3 到 20 个字符', trigger: 'blur' }
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
@@ -257,7 +257,7 @@ const getDefaultRoute = (role) => {
     STUDENT: '/exam',
     VIP_STUDENT: '/exam',
     TEACHER: '/teacher',
-    ADMIN: '/teacher'
+    ADMIN: '/admin'
   }
   return routes[role] || '/'
 }

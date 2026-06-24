@@ -204,3 +204,10 @@ export function uploadChatFile(file) {
         headers: { 'Content-Type': 'multipart/form-data' }
     })
 }
+
+/**
+ * 撤回消息
+ */
+export function recallMessage(messageId) {
+    return request({ url: `/api/chat/messages/${messageId}/recall`, method: 'post' })
+}

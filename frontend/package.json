@@ -21,6 +21,7 @@
     "axios": "^1.13.6",
     "cropperjs": "^1.6.2",
     "dayjs": "^1.11.20",
+    "echarts": "^6.1.0",
     "element-plus": "^2.13.5",
     "pinia": "^3.0.4",
     "sockjs-client": "^1.6.1",

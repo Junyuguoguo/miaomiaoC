@@ -88,6 +88,9 @@ public class ChatMessageService {
         message.setReceiverId(request.getReceiverId());
         message.setMessageType(request.getMessageType());
         message.setContent(request.getContent());
+        message.setFileName(request.getFileName());
+        message.setFileSize(request.getFileSize());
+        message.setCodeContent(request.getCodeContent());
         message.setIsRead(false);
 
         // 保存到数据库
@@ -134,6 +137,9 @@ public class ChatMessageService {
         message.setRoomId(request.getRoomId());
         message.setMessageType(request.getMessageType());
         message.setContent(request.getContent());
+        message.setFileName(request.getFileName());
+        message.setFileSize(request.getFileSize());
+        message.setCodeContent(request.getCodeContent());
         message.setIsRead(false);
 
         // 保存到数据库
@@ -264,6 +270,44 @@ public class ChatMessageService {
         if (!messageIds.isEmpty()) {
             markAsRead(userId, messageIds);
         }
+    }
+
+    /**
+     * 撤回消息（2分钟内有效）
+     */
+    @Transactional
+    public ChatMessageResponse recallMessage(Long userId, Long messageId) {
+        ChatMessage message = chatMessageRepository.findById(messageId)
+                .orElseThrow(() -> new RuntimeException("消息不存在"));
+
+        if (!message.getSenderId().equals(userId)) {
+            throw new RuntimeException("只能撤回自己发送的消息");
+        }
+
+        if (Boolean.TRUE.equals(message.getRecalled())) {
+            throw new RuntimeException("消息已被撤回");
+        }
+
+        // 校验2分钟时限
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime createTime = message.getCreateTime();
+        if (createTime == null || java.time.Duration.between(createTime, now).toMinutes() >= 2) {
+            throw new RuntimeException("超过2分钟，无法撤回");
+        }
+
+        message.setRecalled(true);
+        message.setUpdateTime(now);
+        ChatMessage saved = chatMessageRepository.save(message);
+
+        // 清除缓存
+        if (message.getReceiverId() != null) {
+            clearMessageCache(message.getSenderId(), message.getReceiverId());
+        }
+        if (message.getRoomId() != null) {
+            clearRoomMessageCache(message.getRoomId());
+        }
+
+        return convertToResponse(saved);
     }
 
     /**

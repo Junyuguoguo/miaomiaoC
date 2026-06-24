@@ -5,17 +5,21 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
 import sen.yuhuang.backend.common.Result;
 import sen.yuhuang.backend.common.utils.RedisUtil;
 import sen.yuhuang.backend.common.utils.TokenUtil;
 import sen.yuhuang.backend.entity.Role;
+import sen.yuhuang.backend.entity.TeacherInviteCode;
 import sen.yuhuang.backend.entity.User;
 import sen.yuhuang.backend.entity.UserLearningStats;
 import sen.yuhuang.backend.repository.RoleRepository;
+import sen.yuhuang.backend.repository.TeacherInviteCodeRepository;
 import sen.yuhuang.backend.repository.UserLearningStatsRepository;
 import sen.yuhuang.backend.repository.UserRepository;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -40,6 +44,9 @@ public class UserService {
 
     @Autowired
     RedisUtil redisUtil;
+
+    @Autowired
+    TeacherInviteCodeRepository inviteCodeRepository;
 
     public Result login(String username, String password,String role) {
         // 1.从数据库验证
@@ -97,6 +104,35 @@ public class UserService {
 
         User save = userRepository.save(newUser);
         return Result.ok(save);
+    }
+
+    @Transactional
+    public Result registerWithInvite(String username, String password, String realName, String inviteCode) {
+        // 1. Check username not taken
+        User existing = userRepository.findUserByUsername(username);
+        if (existing != null) return Result.badRequest("用户名被占用");
+
+        // 2. Validate invite code
+        TeacherInviteCode invite = inviteCodeRepository.findByCode(inviteCode);
+        if (invite == null) return Result.badRequest("邀请码不存在");
+        if (invite.getStatus() != 0) return Result.badRequest("邀请码已被使用");
+        if (invite.getExpiresAt().isBefore(LocalDateTime.now())) return Result.badRequest("邀请码已过期");
+
+        // 3. Create user with roleId=3 (teacher) and college from invite
+        User newUser = User.builder()
+                .username(username)
+                .password(password)
+                .realName(realName)
+                .avatar("/avatars/17.jpg")
+                .college(invite.getCollege())
+                .roleId(3L)
+                .build();
+        User saved = userRepository.save(newUser);
+
+        // 4. Mark invite code as used
+        inviteCodeRepository.updateUsage(invite.getId(), 1, saved.getId(), LocalDateTime.now());
+
+        return Result.ok(saved);
     }
 
     public Result logout(String username) {
@@ -223,24 +259,29 @@ public class UserService {
 
     public Result updateUserInfo(String avatar, String email, String major, String phone, String realName,
                                  String school, String score, String college, String userId) {
-        System.out.println("userId="+userId);
         try {
-            // 1.查询用户是否存在
             User user = userRepository.findUserByUserId(Long.valueOf(userId+""));
-            System.out.println("用户信息"+user);
             if (user == null) return Result.badRequest("用户不存在!");
 
-            // 2.修改
+            // 检查学院修改次数限制
+            if (college != null && !college.equals(user.getCollege())) {
+                int count = user.getCollegeChangeCount() != null ? user.getCollegeChangeCount() : 0;
+                if (count >= 2) {
+                    return Result.badRequest("学院修改次数已用完，请联系管理员");
+                }
+                // 增加修改次数
+                user.setCollegeChangeCount(count + 1);
+                user.setCollege(college);
+                userRepository.save(user);
+                // 更新其他字段
+                userRepository.updateUserByUserId(
+                        Long.valueOf(userId), avatar, email, major, phone, realName, school, score, college
+                );
+                return Result.ok().setMessage("更新信息成功！学院还可修改" + (2 - count - 1) + "次");
+            }
+
             userRepository.updateUserByUserId(
-                    Long.valueOf(userId),      // 第1位：userId
-                    avatar,      // 第2位：avatar
-                    email,       // 第3位：email
-                    major,       // 第4位：major
-                    phone,       // 第5位：phone
-                    realName,    // 第6位：realName
-                    school,      // 第7位：school
-                    score,       // 第8位：score
-                    college      // 第9位：college
+                    Long.valueOf(userId), avatar, email, major, phone, realName, school, score, college
             );
             return Result.ok().setMessage("更新信息成功！");
         }catch (Exception e){

@@ -43,18 +43,26 @@
               <span v-else-if="msg.senderRole === 2" class="role-badge vip-badge">VIP学生</span>
               <span class="message-time">{{ formatMessageTime(msg.createTime) }}</span>
             </div>
-            <div class="bubble" :class="getBubbleClass(msg)">
-              <!-- 图片消息 -->
-              <div v-if="msg.messageType === 'IMAGE'" class="bubble-image">
-                <img :src="fixFileUrl(msg.content)" alt="图片" @click="previewImageUrl = fixFileUrl(msg.content)" />
-              </div>
-              <!-- 代码文件消息 -->
-              <div v-else-if="msg.messageType === 'CODE'" class="bubble-code">
+            <div v-if="msg.recalled" class="bubble" :class="[getBubbleClass(msg), 'bubble-recalled']">
+              <span class="recalled-text">{{ msg.senderId === currentUserId ? '你' : msg.senderName || '对方' }}撤回了一条消息</span>
+              <button v-if="msg.senderId === currentUserId" type="button" class="re-edit-btn" @click="reEditMessage(msg)">重新编辑</button>
+            </div>
+            <div v-else class="bubble" :class="[getBubbleClass(msg), { 'code-bubble-shell': shouldRenderCode(msg) }]">
+              <!-- 代码消息 -->
+              <div v-if="shouldRenderCode(msg)" class="bubble-code">
                 <div class="code-header">
-                  <span class="code-filename">{{ msg.fileName || 'code' }}</span>
-                  <a :href="fixFileUrl(msg.content)" download class="code-download">下载</a>
+                  <div class="code-title">
+                    <span class="code-file-icon">&lt;/&gt;</span>
+                    <span class="code-filename">{{ getCodeTitle(msg) }}</span>
+                    <span class="code-language">{{ getCodeLanguage(msg) }}</span>
+                  </div>
+                  <a v-if="isDownloadableCode(msg)" :href="fixFileUrl(msg.content)" download class="code-download">下载</a>
                 </div>
-                <pre class="code-preview"><code>{{ msg.codeContent || '加载中...' }}</code></pre>
+                <pre class="code-preview"><code>{{ getCodeDisplayContent(msg) || '代码文件已上传，点击下载查看完整内容。' }}</code></pre>
+              </div>
+              <!-- 图片消息 -->
+              <div v-else-if="msg.messageType === 'IMAGE'" class="bubble-image">
+                <img :src="fixFileUrl(msg.content)" alt="图片" @click="previewImageUrl = fixFileUrl(msg.content)" />
               </div>
               <!-- 普通文件消息 -->
               <div v-else-if="msg.messageType === 'FILE'" class="bubble-file">
@@ -81,6 +89,12 @@
               <button type="button" class="message-action" @click="replyToMessage(msg)">
                 回复
               </button>
+              <button
+                v-if="msg.senderId === currentUserId && !msg.recalled && canRecall(msg)"
+                type="button"
+                class="message-action recall-action"
+                @click="handleRecall(msg)"
+              >撤回</button>
             </div>
           </div>
         </div>
@@ -115,14 +129,15 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke="var(--app-primary)" stroke-width="1.8"/><circle cx="8.5" cy="8.5" r="1.5" fill="var(--app-primary)"/><path d="M21 15l-5-5L5 21" stroke="var(--app-primary)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
       <input ref="fileInputRef" type="file" style="display:none" accept="image/*,.c,.cpp,.h,.hpp,.java,.py,.js,.ts,.html,.css,.json,.xml,.sql,.sh,.go,.rs,.txt" @change="handleFileUpload" />
-      <input
+      <textarea
         ref="messageInputRef"
         v-model="inputMessage"
         class="msg-input"
-        placeholder="输入消息..."
+        rows="1"
+        placeholder="输入消息，粘贴代码后 Shift+Enter 换行..."
         @keydown.enter.exact.prevent="sendMessage"
         @focus="showPanel = false"
-      />
+      ></textarea>
       <button
         v-if="inputMessage.trim()"
         class="send-btn"
@@ -150,8 +165,17 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import chatWebSocket from '@/utils/chat-websocket'
-import { getPrivateMessages, getRoomMessages, markAsRead, markAllAsRead, uploadChatFile } from '@/api/chat'
+import { getPrivateMessages, getRoomMessages, markAsRead, markAllAsRead, uploadChatFile, recallMessage } from '@/api/chat'
 import request from '@/utils/request'
+import {
+  getCodeDisplayContent,
+  getCodeLanguage,
+  getCodeTitle,
+  isDownloadableCode,
+  looksLikeCode,
+  readCodeFilePreview,
+  shouldRenderCodeMessage
+} from '@/utils/chat-code'
 import dayjs from 'dayjs'
 
 const route = useRoute()
@@ -185,6 +209,8 @@ const fixFileUrl = (url) => {
   if (!url) return ''
   return url
 }
+
+const shouldRenderCode = (msg) => shouldRenderCodeMessage(msg)
 
 const formatFileSize = (bytes) => {
   if (!bytes) return ''
@@ -346,7 +372,9 @@ const sendMessage = () => {
     return
   }
   const content = inputMessage.value.trim()
-  const messageData = { messageType: 'TEXT', content }
+  const messageType = looksLikeCode(content) ? 'CODE' : 'TEXT'
+  const codeContent = messageType === 'CODE' ? content : ''
+  const messageData = { messageType, content, codeContent }
 
   // Optimistic render — show message immediately
   const optimisticMsg = {
@@ -354,7 +382,9 @@ const sendMessage = () => {
     senderId: currentUserId.value,
     senderName: userStore.getUserName || '',
     senderAvatar: userStore.getUserAvatar || '',
+    messageType,
     content,
+    codeContent,
     createTime: new Date().toISOString(),
     mine: true
   }
@@ -381,6 +411,15 @@ const sendMessage = () => {
 
 // Receive message
 const handleMessageReceived = (message) => {
+  // Handle recall event: update existing message in-place
+  if (message.recalled) {
+    const idx = messages.value.findIndex(m => m.id === message.id)
+    if (idx !== -1) {
+      messages.value[idx] = { ...messages.value[idx], ...message }
+      return
+    }
+  }
+
   // Dedup: skip if message with same id already exists
   if (message.id && messages.value.some(m => m.id === message.id)) return
   // Replace optimistic message if it matches
@@ -395,6 +434,36 @@ const handleMessageReceived = (message) => {
   if (message.senderId !== currentUserId.value) {
     markAsRead([message.id]).catch(console.error)
   }
+}
+
+// ──────────────── Recall ────────────────
+
+const canRecall = (msg) => {
+  if (!msg.createTime) return false
+  const diff = Date.now() - new Date(msg.createTime).getTime()
+  return diff < 2 * 60 * 1000
+}
+
+const handleRecall = async (msg) => {
+  try {
+    const res = await recallMessage(msg.id)
+    if (res && res.code === 200) {
+      const idx = messages.value.findIndex(m => m.id === msg.id)
+      if (idx !== -1) {
+        messages.value[idx] = { ...messages.value[idx], recalled: true }
+      }
+      ElMessage.success('消息已撤回')
+    } else {
+      ElMessage.error(res?.message || '撤回失败')
+    }
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || '撤回失败，可能已超过2分钟')
+  }
+}
+
+const reEditMessage = (msg) => {
+  inputMessage.value = msg.content || ''
+  nextTick(() => messageInputRef.value?.focus?.())
 }
 
 const scrollToBottom = () => {
@@ -419,10 +488,11 @@ const handleFileUpload = async (e) => {
   e.target.value = ''
   uploading.value = true
   try {
+    const localCodeContent = await readCodeFilePreview(file)
     const res = await uploadChatFile(file)
     if (res && res.code === 200) {
-      const { url, messageType, fileName, fileSize } = res.data
-      sendFileMessage(messageType, url, fileName, fileSize)
+      const { url, messageType, fileName, fileSize, codeContent } = res.data
+      sendFileMessage(messageType, url, fileName, fileSize, codeContent || localCodeContent)
     } else {
       ElMessage.error(res?.message || '上传失败')
     }
@@ -433,12 +503,12 @@ const handleFileUpload = async (e) => {
   }
 }
 
-const sendFileMessage = (messageType, url, fileName, fileSize) => {
+const sendFileMessage = (messageType, url, fileName, fileSize, codeContent = '') => {
   if (!chatWebSocket.isConnected) {
     ElMessage.warning('未连接到服务器')
     return
   }
-  const messageData = { messageType, content: url, fileName, fileSize }
+  const messageData = { messageType, content: url, fileName, fileSize, codeContent }
 
   // Optimistic render
   const optimisticMsg = {
@@ -450,6 +520,7 @@ const sendFileMessage = (messageType, url, fileName, fileSize) => {
     messageType,
     fileName,
     fileSize,
+    codeContent,
     createTime: new Date().toISOString(),
     mine: true
   }
@@ -773,6 +844,46 @@ onUnmounted(() => {
   font-size: 12px;
 }
 
+/* --- Recalled bubble --- */
+.bubble-recalled {
+  background: #f0f0f0 !important;
+  border: 1px dashed #d0d5dd !important;
+  color: #94a3b8 !important;
+  box-shadow: none !important;
+}
+
+.recalled-text {
+  font-size: 13px;
+  font-style: italic;
+}
+
+.re-edit-btn {
+  margin-left: 8px;
+  padding: 2px 8px;
+  border: 1px solid var(--app-primary);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--app-primary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.re-edit-btn:hover {
+  background: var(--app-primary-soft);
+}
+
+.recall-action {
+  color: #e74c3c;
+  border-color: #f5c6cb;
+}
+
+.recall-action:hover {
+  color: #c0392b;
+  border-color: #e74c3c;
+  background: #fdf0ef;
+}
+
 /* --- Role Badges --- */
 .level-badge,
 .role-badge {
@@ -856,7 +967,7 @@ onUnmounted(() => {
 /* Input bar */
 .input-bar {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 10px;
   padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
   background: #f5f5f5;
@@ -886,14 +997,19 @@ onUnmounted(() => {
 
 .msg-input {
   flex: 1;
-  height: 38px;
-  padding: 0 14px;
+  min-height: 38px;
+  max-height: 112px;
+  padding: 8px 14px;
   border: 1px solid #ddd;
   border-radius: 8px;
   background: #fff;
   font-size: 14px;
+  line-height: 20px;
+  font-family: inherit;
   color: #333;
   outline: none;
+  resize: none;
+  overflow-y: auto;
   transition: border-color 0.2s;
 }
 
@@ -968,31 +1084,85 @@ onUnmounted(() => {
 }
 
 /* --- Code bubble --- */
+.bubble.code-bubble-shell,
+.bubble-peer.code-bubble-shell,
+.bubble-self.code-bubble-shell,
+.bubble-vip.bubble-peer.code-bubble-shell,
+.bubble-teacher.bubble-peer.code-bubble-shell,
+.bubble-admin.bubble-peer.code-bubble-shell,
+.bubble-vip.bubble-self.code-bubble-shell,
+.bubble-teacher.bubble-self.code-bubble-shell,
+.bubble-admin.bubble-self.code-bubble-shell {
+  width: min(720px, 100%);
+  padding: 0;
+  color: #1f2a44;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
 .bubble-code {
-  min-width: 260px;
-  max-width: 400px;
+  width: 100%;
+  min-width: min(320px, 100%);
+  overflow: hidden;
+  border: 1px solid #d6e1f2;
+  border-radius: 8px;
+  background: #101827;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.16);
 }
 
 .code-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 6px;
-  margin-bottom: 6px;
-  border-bottom: 1px solid rgba(0,0,0,0.06);
+  gap: 12px;
+  padding: 9px 12px;
+  margin: 0;
+  background: #f8fbff;
+  border-bottom: 1px solid #dbe6f5;
+}
+
+.code-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.code-file-icon {
+  flex-shrink: 0;
+  color: #2563eb;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 900;
 }
 
 .code-filename {
-  font-size: 12px;
+  min-width: 0;
+  overflow: hidden;
+  color: #24324a;
+  font-size: 13px;
   font-weight: 700;
-  color: #64748b;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.code-language {
+  flex-shrink: 0;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #eaf1ff;
+  color: #3156d4;
+  font-size: 11px;
+  font-weight: 800;
 }
 
 .code-download {
-  font-size: 11px;
+  flex-shrink: 0;
+  font-size: 12px;
   color: var(--app-primary);
   text-decoration: none;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .code-download:hover {
@@ -1001,20 +1171,43 @@ onUnmounted(() => {
 
 .code-preview {
   margin: 0;
-  padding: 8px;
-  background: #1e293b;
-  color: #e2e8f0;
-  border-radius: 6px;
-  font-size: 12px;
-  line-height: 1.5;
+  padding: 14px;
+  background: #101827;
+  color: #e8edf7;
+  border-radius: 0;
+  font-size: 13px;
+  line-height: 1.65;
   overflow-x: auto;
-  max-height: 200px;
+  max-height: 300px;
   overflow-y: auto;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  tab-size: 2;
 }
 
 .code-preview code {
-  white-space: pre;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 768px) {
+  .bubble.code-bubble-shell,
+  .bubble-peer.code-bubble-shell,
+  .bubble-self.code-bubble-shell {
+    width: min(100%, calc(100vw - 88px));
+  }
+
+  .bubble-code {
+    min-width: 0;
+  }
+
+  .code-header {
+    align-items: flex-start;
+  }
+
+  .code-preview {
+    max-height: 240px;
+    font-size: 12px;
+  }
 }
 
 /* --- File bubble --- */

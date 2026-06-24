@@ -63,6 +63,26 @@ public class UserController {
         return userService.register(username,password,role,college);
     }
 
+    @PostMapping("/registerWithInvite")
+    public Result registerWithInvite(@RequestBody Map<String, String> request) {
+        String username = request.get("username");
+        String password = request.get("password");
+        String realName = request.get("realName");
+        String inviteCode = request.get("inviteCode");
+
+        if (username == null || username.trim().isEmpty()) {
+            return Result.badRequest("用户名不能为空");
+        }
+        if (password == null || password.trim().isEmpty()) {
+            return Result.badRequest("密码不能为空");
+        }
+        if (inviteCode == null || inviteCode.trim().isEmpty()) {
+            return Result.badRequest("邀请码不能为空");
+        }
+
+        return userService.registerWithInvite(username.trim(), password, realName, inviteCode.trim().toUpperCase());
+    }
+
     @PostMapping("/sendEmail")
     public Result sendEmail(@RequestBody Map<String, String> request) {
         // 从请求中获取邮箱地址

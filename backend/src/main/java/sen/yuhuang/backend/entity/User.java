@@ -70,6 +70,9 @@ public class User {
     @Column(name = "college", length = 100)
     private String college;
 
+    @Column(name = "college_change_count")
+    private Integer collegeChangeCount = 0;
+
     // ========== 辅助方法 ==========
 
     /**

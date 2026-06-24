@@ -129,4 +129,43 @@ public class ChatWebSocketController {
             log.error("标记消息已读失败", e);
         }
     }
+
+    /**
+     * 撤回消息
+     * 客户端发送: /app/chat/recall
+     * 服务端广播: 撤回事件给相关用户
+     */
+    @MessageMapping("/chat/recall")
+    public void recallMessage(@Payload java.util.Map<String, Object> payload,
+                              SimpMessageHeaderAccessor headerAccessor) {
+        try {
+            String userIdStr = (String) headerAccessor.getSessionAttributes().get("userId");
+            if (userIdStr == null) return;
+
+            Long userId = Long.parseLong(userIdStr);
+            Long messageId = Long.valueOf(payload.get("messageId").toString());
+
+            ChatMessageResponse response = chatMessageService.recallMessage(userId, messageId);
+
+            // 广播撤回事件
+            if (response.getReceiverId() != null) {
+                // 单聊：发给接收者和发送者
+                messagingTemplate.convertAndSend("/user/" + response.getReceiverId() + "/queue/messages", Result.ok(response));
+                messagingTemplate.convertAndSend("/user/" + userId + "/queue/messages", Result.ok(response));
+            }
+            if (response.getRoomId() != null) {
+                // 群聊：广播到房间
+                messagingTemplate.convertAndSend("/topic/room/" + response.getRoomId(), Result.ok(response));
+            }
+
+            log.info("消息撤回成功: 用户={}, 消息ID={}", userId, messageId);
+        } catch (Exception e) {
+            log.error("撤回消息失败", e);
+            messagingTemplate.convertAndSendToUser(
+                headerAccessor.getSessionAttributes().get("userId").toString(),
+                "/queue/errors",
+                Result.error("撤回失败: " + e.getMessage())
+            );
+        }
+    }
 }

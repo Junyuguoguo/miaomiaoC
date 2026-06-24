@@ -55,6 +55,7 @@ public class SimulationExamResultService {
             for (SimulationExamResult simulationExamResult : records) {
                 HashMap<String, Object> map = new HashMap<>();
                 SimulationExam exam = simulationExamRepository.getExamByExamId(simulationExamResult.getExamId());
+                if (exam == null) continue;
                 map.put("examName",exam.getExamTitle());
                 map.put("examTime",simulationExamResult.getUpdateTime());
                 map.put("score",simulationExamResult.getExamTotalScore());
@@ -72,11 +73,16 @@ public class SimulationExamResultService {
                     // 封装该题得分
                     UserQuestionRecord record = userQuestionRecordRepository.
                             findQuestionRecordByUserIdAndQuestionId(userIdLong,question.getId());
-                    questionDto.setSore(record.getScore().toString());
+                    if (record != null) {
+                        questionDto.setSore(record.getScore() != null ? record.getScore().toString() : "0");
+                        questionDto.setCode(record.getCode());
+                    } else {
+                        questionDto.setSore("0");
+                        questionDto.setCode("");
+                    }
                     questionDto.setInputFormat(question.getInputFormat());
                     questionDto.setOutputFormat(question.getOutputFormat());
-                    questionDto.setFullScore(question.getFullScore().toString());
-                    questionDto.setCode(record.getCode());
+                    questionDto.setFullScore(question.getFullScore() != null ? question.getFullScore().toString() : "0");
 
                     //封装每个问题的测试用例实际情况
                     List<TestSampleResult> testResults = testSampleResultRepository.
@@ -86,6 +92,7 @@ public class SimulationExamResultService {
                         // 查询测试用例输入和输出
                         TestSample sample = testSampleRepository.
                                 findTestSampleById(testSampleResult.getTestSampleId());
+                        if (sample == null) continue;
 
                         TestSampleResultsDto dto = TestSampleResultsDto.builder()
                                 .name("用例"+testSampleResult.getId())

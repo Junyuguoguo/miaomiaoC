@@ -458,6 +458,15 @@ class ChatWebSocketClient {
     }
 
     /**
+     * 撤回消息
+     * @param {number} messageId
+     * @returns {boolean}
+     */
+    recallMessage(messageId) {
+        return this._sendTo('/app/chat/recall', { messageId })
+    }
+
+    /**
      * 内部发送方法
      * @param {string} destination
      * @param {object|Array} body

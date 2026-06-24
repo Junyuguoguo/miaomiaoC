@@ -23,6 +23,14 @@ export function register(data) {
     })
 }
 
+export function registerWithInvite(data) {
+    return request({
+        url: '/api/auth/registerWithInvite',
+        method: 'post',
+        data
+    })
+}
+
 
 /**
  * 发送验证码（用于找回密码）

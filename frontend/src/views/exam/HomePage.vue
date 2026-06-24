@@ -183,6 +183,10 @@
                   <span class="value">{{ userInfo.email || '未设置' }}</span>
                 </div>
                 <div class="info-item">
+                  <span class="label">所属学院</span>
+                  <span class="value">{{ userInfo.college || '未设置' }}</span>
+                </div>
+                <div class="info-item">
                   <span class="label">会员到期</span>
                   <span class="value">{{ userInfo.vipExpireTime ? formatDate(userInfo.vipExpireTime) : '无' }}</span>
                 </div>
@@ -334,6 +338,14 @@
                 <el-option label="人文社科学院" value="人文社科学院" />
                 <el-option label="自动化学院" value="自动化学院" />
               </el-select>
+            </el-form-item>
+            <el-form-item label="所属学院">
+              <el-select v-if="collegeChangesLeft > 0" v-model="editForm.college" placeholder="请选择所属学院" style="width: 100%;">
+                <el-option v-for="c in collegeOptions" :key="c" :label="c" :value="c" />
+              </el-select>
+              <el-input v-else :model-value="editForm.college || '未设置'" disabled />
+              <div class="form-hint" v-if="collegeChangesLeft > 0">还可修改 {{ collegeChangesLeft }} 次</div>
+              <div class="form-hint form-hint-warn" v-else>修改次数已用完，如需修改请联系管理员</div>
             </el-form-item>
             <el-form-item label="报考专业" prop="major">
               <el-input v-model="editForm.major" placeholder="请输入报考专业" />
@@ -1346,7 +1358,15 @@ const editForm = reactive({
   school: '',
   major: '',
   score: '',
-  email: ''
+  email: '',
+  college: ''
+})
+
+const collegeOptions = ['计算机学院','机械学院','电子信息学院','经济管理学院','外国语学院','理学院','人文社科学院','自动化学院']
+
+const collegeChangesLeft = computed(() => {
+  const count = userInfo.value.collegeChangeCount ?? 0
+  return Math.max(0, 2 - count)
 })
 
 // 表单验证规则
@@ -1383,6 +1403,7 @@ const fillEditForm = () => {
   editForm.major = userInfo.value.major || ''
   editForm.score = userInfo.value.score || ''
   editForm.email = userInfo.value.email || ''
+  editForm.college = userInfo.value.college || ''
 
   // 设置当前选中的头像（如果有就显示，没有就为空）
   selectedAvatar.value = fixAvatarUrl(userInfo.value.avatar) || ''
@@ -1441,10 +1462,14 @@ const submitEditInfo = async () => {
     // 合并头像数据
     const submitData = {
       ...editForm,
-      avatar: selectedAvatar.value,  // 使用选中的头像
+      avatar: selectedAvatar.value,
       userId: newUserInfo.id || userInfo.value.id || userStore.getUserId
     }
     submitData.real_name = String(submitData.real_name || '').trim()
+    // 只有学院有变化时才传 college，触发后端次数校验
+    if (submitData.college === userInfo.value.college) {
+      delete submitData.college
+    }
 
     // 调用更新接口
     const res = await updateUserInfo(submitData)
@@ -1472,6 +1497,10 @@ const submitEditInfo = async () => {
       userInfo.value.phone = submitData.phone
       userInfo.value.school = submitData.school
       userInfo.value.score = submitData.score
+      if (submitData.college) {
+        userInfo.value.college = submitData.college
+        userInfo.value.collegeChangeCount = (userInfo.value.collegeChangeCount ?? 0) + 1
+      }
 
       // 关闭模态框
       mustCompleteRealName.value = false
@@ -4967,5 +4996,15 @@ const handleLogout = () => {
   max-width: 100%;
   max-height: 100%;
   display: block;
+}
+
+.form-hint {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 4px;
+}
+
+.form-hint-warn {
+  color: #e6a23c;
 }
 </style>

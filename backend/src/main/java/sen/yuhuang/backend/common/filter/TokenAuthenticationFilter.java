@@ -30,8 +30,8 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         String requestURI = request.getRequestURI();
 
-        // skip auth endpoints and websocket
-        if (requestURI.startsWith("/api/auth/") || requestURI.startsWith("/ws-chat")) {
+        // skip public auth endpoints, uploaded static files, and websocket
+        if (requestURI.startsWith("/api/auth/") || requestURI.startsWith("/uploads/") || requestURI.startsWith("/ws-chat")) {
             filterChain.doFilter(request, response);
             return;
         }

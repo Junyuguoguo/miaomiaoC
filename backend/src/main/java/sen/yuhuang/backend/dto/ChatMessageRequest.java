@@ -27,4 +27,19 @@ public class ChatMessageRequest {
      * 消息内容
      */
     private String content;
+
+    /**
+     * 文件名（图片/代码/文件消息）
+     */
+    private String fileName;
+
+    /**
+     * 文件大小（字节）
+     */
+    private Long fileSize;
+
+    /**
+     * 代码预览内容
+     */
+    private String codeContent;
 }

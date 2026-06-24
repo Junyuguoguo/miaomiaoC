@@ -57,6 +57,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**").permitAll()
                         .requestMatchers("/api/teacher/**").permitAll()
                         .requestMatchers("/api/chat/**").permitAll()
+                        .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers("/ws-chat/**").permitAll()  // WebSocket 端点（握手阶段不需要认证）
                         .anyRequest().authenticated()
                 );

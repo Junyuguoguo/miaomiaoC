@@ -13,6 +13,7 @@ import sen.yuhuang.backend.entity.UserRoomSetting;
 import sen.yuhuang.backend.repository.UserRepository;
 import sen.yuhuang.backend.service.ChatMessageService;
 
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -326,6 +327,7 @@ public class ChatController {
 
             String fileName = System.currentTimeMillis() + "_" + java.util.UUID.randomUUID().toString().substring(0, 8) + "." + ext;
             java.io.File dest = new java.io.File(baseDir + fileName);
+            byte[] codeBytes = messageType.equals("CODE") ? file.getBytes() : null;
             file.transferTo(dest);
 
             String url = "/uploads/" + subDir + "/" + fileName;
@@ -336,9 +338,31 @@ public class ChatController {
             data.put("fileName", originalName);
             data.put("fileSize", file.getSize());
             data.put("extension", ext);
+            if (codeBytes != null) {
+                String codeContent = new String(codeBytes, StandardCharsets.UTF_8);
+                int previewLimit = 60000;
+                if (codeContent.length() > previewLimit) {
+                    codeContent = codeContent.substring(0, previewLimit) + "\n\n/* 预览已截断，下载文件查看完整内容 */";
+                }
+                data.put("codeContent", codeContent);
+            }
             return Result.ok(data);
         } catch (Exception e) {
             return Result.error("上传失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 撤回消息（2分钟内）
+     */
+    @PostMapping("/messages/{messageId}/recall")
+    public Result recallMessage(HttpServletRequest request, @PathVariable Long messageId) {
+        User currentUser = getCurrentUser(request);
+        try {
+            ChatMessageResponse resp = chatMessageService.recallMessage(currentUser.getId(), messageId);
+            return Result.ok(resp);
+        } catch (RuntimeException e) {
+            return Result.badRequest(e.getMessage());
         }
     }
 }

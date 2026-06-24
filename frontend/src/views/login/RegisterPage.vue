@@ -4,7 +4,7 @@
       <!-- 标题 -->
       <div class="register-header">
         <h2>{{title}}@{{version}}</h2>
-        <p class="sub-title">学生账号注册</p>
+        <p class="sub-title">教师端注册</p>
       </div>
 
       <el-form
@@ -13,14 +13,16 @@
           :rules="registerRules"
           class="register-form"
           @keyup.enter="handleRegister"
+          autocomplete="off"
       >
         <!-- 账号输入框 -->
         <el-form-item prop="username">
           <el-input
               v-model="registerForm.username"
-              placeholder="请输入账号（3-10位，字母/数字）"
+              placeholder="请输入账号（3-20位，字母/数字）"
               size="large"
               class="custom-input"
+              autocomplete="off"
           >
             <template #prefix>
               <el-icon><User /></el-icon>
@@ -37,6 +39,7 @@
               size="large"
               show-password
               class="custom-input"
+              autocomplete="new-password"
               @input="checkPasswordStrength"
           >
             <template #prefix>
@@ -58,6 +61,7 @@
               size="large"
               show-password
               class="custom-input"
+              autocomplete="new-password"
           >
             <template #prefix>
               <el-icon><Lock /></el-icon>
@@ -65,8 +69,37 @@
           </el-input>
         </el-form-item>
 
-        <!-- 学院选择 -->
-        <el-form-item prop="college">
+        <!-- 邀请码输入（选填） -->
+        <el-form-item prop="inviteCode">
+          <el-input
+              v-model="registerForm.inviteCode"
+              placeholder="教师邀请码（选填，有码注册为教师）"
+              size="large"
+              class="custom-input"
+              :disabled="inviteCodeFromUrl"
+          >
+            <template #prefix>
+              <el-icon><Key /></el-icon>
+            </template>
+          </el-input>
+        </el-form-item>
+
+        <!-- 姓名输入（有邀请码时显示） -->
+        <el-form-item v-if="isInviteMode" prop="realName">
+          <el-input
+              v-model="registerForm.realName"
+              placeholder="请输入真实姓名"
+              size="large"
+              class="custom-input"
+          >
+            <template #prefix>
+              <el-icon><UserFilled /></el-icon>
+            </template>
+          </el-input>
+        </el-form-item>
+
+        <!-- 学院选择（无邀请码时显示） -->
+        <el-form-item v-if="!isInviteMode" prop="college">
           <el-select
               v-model="registerForm.college"
               placeholder="请选择学院"
@@ -83,17 +116,17 @@
           </el-select>
         </el-form-item>
 
-        <!-- 学生角色标识（仅展示，不可选择） -->
+        <!-- 角色标识（仅展示，不可选择） -->
         <el-form-item class="role-item">
           <div class="role-display">
             <el-button
                 type="primary"
                 plain
                 disabled
-                class="student-role-btn"
+                :class="isInviteMode ? 'teacher-role-btn' : 'student-role-btn'"
             >
               <el-icon><User /></el-icon>
-              学生
+              {{ isInviteMode ? '教师' : '学生' }}
             </el-button>
           </div>
         </el-form-item>
@@ -124,11 +157,11 @@
 </template>
 
 <script setup>
-import { ref, reactive,onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { User, Lock, Edit, UserFilled } from '@element-plus/icons-vue'
-import { register } from '@/api/auth' // 需自行实现注册API
+import { User, Lock, Edit, UserFilled, Key } from '@element-plus/icons-vue'
+import { register, registerWithInvite } from '@/api/auth'
 
 const router = useRouter()
 const title = ref('')
@@ -140,6 +173,14 @@ const loading = ref(false)
 onMounted(async () => {
   title.value = import.meta.env.VITE_APP_TITLE
   version.value = import.meta.env.VITE_APP_VERSION
+
+  // 读取 URL 中的邀请码参数，自动填入
+  const urlParams = new URLSearchParams(window.location.search)
+  const inviteCodeParam = urlParams.get('inviteCode')
+  if (inviteCodeParam) {
+    registerForm.inviteCode = inviteCodeParam
+    inviteCodeFromUrl.value = true
+  }
 })
 
 
@@ -161,8 +202,13 @@ const registerForm = reactive({
   password: '',
   confirmPassword: '',
   college: '',
-  role: 'student' // 固定为学生，不可修改
+  inviteCode: '',
+  realName: '',
+  role: 'student'
 })
+
+const isInviteMode = computed(() => registerForm.inviteCode.trim().length > 0)
+const inviteCodeFromUrl = ref(false)
 
 // 密码强度相关
 const strengthText = ref('')
@@ -196,7 +242,7 @@ const checkPasswordStrength = (val) => {
 const registerRules = {
   username: [
     { required: true, message: '请输入账号', trigger: 'blur' },
-    { min: 3, max: 10, message: '长度在 3 到 10 个字符', trigger: 'blur' },
+    { min: 3, max: 20, message: '长度在 3 到 20 个字符', trigger: 'blur' },
     { pattern: /^[a-zA-Z0-9]+$/, message: '只能包含字母和数字', trigger: 'blur' }
   ],
   password: [
@@ -230,13 +276,23 @@ const handleRegister = async () => {
     if (valid) {
       loading.value = true
       try {
-        // 调用注册API（角色固定为student）
-        const response = await register({
-          username: registerForm.username,
-          password: registerForm.password,
-          role: registerForm.role, // 固定传student
-          college: registerForm.college
-        })
+        // 调用注册API
+        let response
+        if (isInviteMode.value) {
+          response = await registerWithInvite({
+            username: registerForm.username,
+            password: registerForm.password,
+            realName: registerForm.realName,
+            inviteCode: registerForm.inviteCode.trim()
+          })
+        } else {
+          response = await register({
+            username: registerForm.username,
+            password: registerForm.password,
+            role: registerForm.role,
+            college: registerForm.college
+          })
+        }
 
         if(response.code === 200){
           console.log("注册返回的数据:response=",response)

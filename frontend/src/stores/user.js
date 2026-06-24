@@ -146,6 +146,7 @@ export const useUserStore = defineStore('user', {
                 role_id: userData.role_id || userData.roleId || userData.RoleId || null,
                 avatar: userData.avatar || '',
                 college: userData.college || '',
+                collegeChangeCount: userData.collegeChangeCount ?? userData.college_change_count ?? 0,
                 vip_expire_time: userData.vip_expire_time || userData.vipExpireTime || null,
                 create_time: userData.create_time || userData.createTime || null
             }

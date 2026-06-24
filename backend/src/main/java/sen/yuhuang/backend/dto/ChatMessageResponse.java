@@ -20,6 +20,10 @@ public class ChatMessageResponse {
     private Long roomId;
     private String messageType;
     private String content;
+    private String fileName;
+    private Long fileSize;
+    private String codeContent;
     private Boolean isRead;
+    private Boolean recalled;
     private LocalDateTime createTime;
 }

@@ -123,6 +123,16 @@ const router = createRouter({
                 requiresFullscreen: true  // 自定义元信息，表示需要强制全屏
             }
         },
+        // 管理员后台
+        {
+            path: '/admin',
+            name: 'admin',
+            component: () => import('@/views/admin/AdminPage.vue'),
+            meta: {
+                requiresAuth: true,
+                requiresFullscreen: true
+            }
+        },
         // 在线聊天 - 聊天大厅
         {
             path: '/chat',

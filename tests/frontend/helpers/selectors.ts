@@ -1,19 +1,20 @@
 // tests/frontend/helpers/selectors.ts
 export const selectors = {
   login: {
-    usernameInput: 'input[placeholder*="用户名"], input[name="username"]',
-    passwordInput: 'input[type="password"]',
+    usernameInput: 'input[placeholder*="请输入账号"], input[placeholder*="用户名"]',
+    passwordInput: 'input[placeholder*="请输入密码"], input[type="password"]',
     submitButton: 'button:has-text("登录")',
-    errorMessage: '.el-message--error, .error-message, [class*="error"]',
-    registerLink: 'a:has-text("注册"), button:has-text("注册")',
-    forgotLink: 'a:has-text("忘记密码"), button:has-text("忘记密码")'
+    roleButton: (role: string) => `button:has-text("${role}")`,
+    errorMessage: '.el-message--error, .el-message, [class*="error"]',
+    registerLink: '.el-link:has-text("注册"), a:has-text("注册")',
+    forgotLink: '.el-link:has-text("找回密码"), a:has-text("忘记密码")'
   },
   register: {
-    usernameInput: 'input[placeholder*="用户名"], input[name="username"]',
-    passwordInput: 'input[type="password"]',
+    usernameInput: 'input[placeholder*="请输入账号"], input[placeholder*="用户名"]',
+    passwordInput: 'input[placeholder*="请输入密码"], input[type="password"]',
     submitButton: 'button:has-text("注册")',
-    errorMessage: '.el-message--error, .error-message, [class*="error"]',
-    loginLink: 'a:has-text("登录"), button:has-text("登录")'
+    errorMessage: '.el-message--error, .el-message, [class*="error"]',
+    loginLink: '.el-link:has-text("登录"), a:has-text("登录")'
   },
   exam: {
     list: '.exam-card, .exam-item, [class*="exam"]',
@@ -24,16 +25,16 @@ export const selectors = {
   chat: {
     roomList: '.chat-room, .room-item, [class*="room"]',
     createButton: 'button:has-text("创建"), button:has-text("新建")',
-    messageInput: 'textarea, input[placeholder*="消息"], input[placeholder*="输入"]',
+    messageInput: 'textarea[placeholder*="消息"], textarea[placeholder*="输入"], .el-textarea__inner',
     sendButton: 'button:has-text("发送"), button[type="submit"]',
     messageList: '.message-list, .chat-messages, [class*="message"]'
   },
   admin: {
-    menu: '.menu, .sidebar, [class*="menu"], [class*="sidebar"]',
-    userManage: 'text=用户管理, text=Users, [class*="user"]',
-    inviteManage: 'text=邀请码, text=Invite, [class*="invite"]',
-    collegeManage: 'text=学院, text=College, [class*="college"]',
-    statsOverview: 'text=统计, text=Stats, [class*="stats"]'
+    menu: '.menu, .sidebar, [class*="menu"], [class*="sidebar"], nav',
+    userManage: 'text=用户管理, [class*="user"]',
+    inviteManage: 'text=邀请码, [class*="invite"]',
+    collegeManage: 'text=学院, [class*="college"]',
+    statsOverview: 'text=统计, [class*="stats"]'
   },
   question: {
     list: '.question-card, .question-item, [class*="question"]',
@@ -42,8 +43,8 @@ export const selectors = {
     wrongList: '.wrong-question, .error-list'
   },
   teacher: {
-    statsOverview: '.stats-overview, .statistics',
-    studentList: '.student-list, .student-table',
-    questionManage: '.question-manage, .question-bank'
+    statsOverview: '.stats-overview, .statistics, [class*="stats"]',
+    studentList: '.student-list, .student-table, [class*="student"]',
+    questionManage: '.question-manage, .question-bank, [class*="question"]'
   }
 };

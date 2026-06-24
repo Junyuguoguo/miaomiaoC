@@ -55,10 +55,34 @@ public class ChatMessage {
     private String content;
 
     /**
+     * 文件名（图片/代码/文件消息）
+     */
+    @Column(name = "file_name", length = 255)
+    private String fileName;
+
+    /**
+     * 文件大小（字节）
+     */
+    @Column(name = "file_size")
+    private Long fileSize;
+
+    /**
+     * 代码预览内容
+     */
+    @Column(name = "code_content", columnDefinition = "TEXT")
+    private String codeContent;
+
+    /**
      * 是否已读
      */
     @Column(name = "is_read", nullable = false)
     private Boolean isRead = false;
+
+    /**
+     * 是否已撤回
+     */
+    @Column(name = "recalled", nullable = false)
+    private Boolean recalled = false;
 
     /**
      * 创建时间
