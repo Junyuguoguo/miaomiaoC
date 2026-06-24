@@ -1,24 +1,55 @@
+# OS
 .DS_Store
-*.log
-*.iml
-__pycache__/
+Thumbs.db
 
+# IDE
 .idea/
 .vscode/
+*.iml
 
+# Logs
+*.log
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Node
 node_modules/
 dist/
-target/
 build/
 
+# Frontend
 frontend/node_modules/
 frontend/dist/
+
+# Backend
 backend/target/
 
+# Outputs
 outputs/
 
-# Local secrets. Use backend/src/main/resources/application.example.yml as a template.
+# Uploads (user data)
+uploads/
+
+# Database dumps (can contain sensitive data)
+*.sql
+
+# Local secrets
 backend/src/main/resources/application.yml
 
-# Database dumps can contain real users, phone numbers, emails, and passwords.
-*.sql
+# Packaging / deployment artifacts
+dabao/
+
+# Test reports and results
+tests/frontend/playwright-report/
+tests/frontend/test-results/
+
+# Tool configs
+.superpowers/
+.opencode/
+.impeccable.md
+
+# Planning docs (tool-generated)
+docs/superpowers/
