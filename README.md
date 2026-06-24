@@ -652,7 +652,7 @@ pytest tests/
 
 ## 👥 作者
 
-- **Yuhuang Sen** - 主要开发者
+- **汪俊宇** - 主要开发者
 
 ##  致谢
 
@@ -668,7 +668,7 @@ pytest tests/
 
 如有问题或建议，欢迎通过以下方式联系：
 
-- Email: your-email@example.com
+- Email: 1743654545@qq.com
 - GitHub Issues: [https://github.com/your-username/miaomiaoC/issues](https://github.com/your-username/miaomiaoC/issues)
 
 ---
